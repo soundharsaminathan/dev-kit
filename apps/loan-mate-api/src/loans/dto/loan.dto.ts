@@ -56,6 +56,28 @@ export class CreateLoanDto {
   processingFee?: number;
 }
 
+export class UpdateLoanAmountsDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  principal?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  annualRatePercent?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  tenureInstallments?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  processingFee?: number;
+}
+
 export class RejectLoanDto {
   @IsString()
   @MinLength(1)

@@ -34,6 +34,7 @@ import { Route as AppUsersIndexImport } from './routes/app/users.index'
 import { Route as AppProductsIndexImport } from './routes/app/products.index'
 import { Route as AppLoansIndexImport } from './routes/app/loans.index'
 import { Route as AppCustomersIndexImport } from './routes/app/customers.index'
+import { Route as AppApprovalsIndexImport } from './routes/app/approvals.index'
 import { Route as AppUsersIdImport } from './routes/app/users.$id'
 import { Route as AppProductsNewImport } from './routes/app/products.new'
 import { Route as AppProductsIdImport } from './routes/app/products.$id'
@@ -41,6 +42,7 @@ import { Route as AppLoansNewImport } from './routes/app/loans.new'
 import { Route as AppLoansIdImport } from './routes/app/loans.$id'
 import { Route as AppCustomersNewImport } from './routes/app/customers.new'
 import { Route as AppCustomersIdImport } from './routes/app/customers.$id'
+import { Route as AppApprovalsIdImport } from './routes/app/approvals.$id'
 import { Route as AppLoansIdScheduleImport } from './routes/app/loans.$id_.schedule'
 
 // Create/Update Routes
@@ -183,6 +185,12 @@ const AppCustomersIndexRoute = AppCustomersIndexImport.update({
   getParentRoute: () => AppCustomersRoute,
 } as any)
 
+const AppApprovalsIndexRoute = AppApprovalsIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppApprovalsRoute,
+} as any)
+
 const AppUsersIdRoute = AppUsersIdImport.update({
   id: '/$id',
   path: '/$id',
@@ -223,6 +231,12 @@ const AppCustomersIdRoute = AppCustomersIdImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AppCustomersRoute,
+} as any)
+
+const AppApprovalsIdRoute = AppApprovalsIdImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppApprovalsRoute,
 } as any)
 
 const AppLoansIdScheduleRoute = AppLoansIdScheduleImport.update({
@@ -368,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexImport
       parentRoute: typeof AppImport
     }
+    '/app/approvals/$id': {
+      id: '/app/approvals/$id'
+      path: '/$id'
+      fullPath: '/app/approvals/$id'
+      preLoaderRoute: typeof AppApprovalsIdImport
+      parentRoute: typeof AppApprovalsImport
+    }
     '/app/customers/$id': {
       id: '/app/customers/$id'
       path: '/$id'
@@ -416,6 +437,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/users/$id'
       preLoaderRoute: typeof AppUsersIdImport
       parentRoute: typeof AppUsersImport
+    }
+    '/app/approvals/': {
+      id: '/app/approvals/'
+      path: '/'
+      fullPath: '/app/approvals/'
+      preLoaderRoute: typeof AppApprovalsIndexImport
+      parentRoute: typeof AppApprovalsImport
     }
     '/app/customers/': {
       id: '/app/customers/'
@@ -468,6 +496,20 @@ const AdminRouteChildren: AdminRouteChildren = {
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface AppApprovalsRouteChildren {
+  AppApprovalsIdRoute: typeof AppApprovalsIdRoute
+  AppApprovalsIndexRoute: typeof AppApprovalsIndexRoute
+}
+
+const AppApprovalsRouteChildren: AppApprovalsRouteChildren = {
+  AppApprovalsIdRoute: AppApprovalsIdRoute,
+  AppApprovalsIndexRoute: AppApprovalsIndexRoute,
+}
+
+const AppApprovalsRouteWithChildren = AppApprovalsRoute._addFileChildren(
+  AppApprovalsRouteChildren,
+)
 
 interface AppCustomersRouteChildren {
   AppCustomersIdRoute: typeof AppCustomersIdRoute
@@ -534,7 +576,7 @@ const AppUsersRouteWithChildren = AppUsersRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
-  AppApprovalsRoute: typeof AppApprovalsRoute
+  AppApprovalsRoute: typeof AppApprovalsRouteWithChildren
   AppAuditRoute: typeof AppAuditRoute
   AppBranchesRoute: typeof AppBranchesRoute
   AppCollectionsRoute: typeof AppCollectionsRoute
@@ -550,7 +592,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppApprovalsRoute: AppApprovalsRoute,
+  AppApprovalsRoute: AppApprovalsRouteWithChildren,
   AppAuditRoute: AppAuditRoute,
   AppBranchesRoute: AppBranchesRoute,
   AppCollectionsRoute: AppCollectionsRoute,
@@ -573,7 +615,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/admin/profile': typeof AdminProfileRoute
-  '/app/approvals': typeof AppApprovalsRoute
+  '/app/approvals': typeof AppApprovalsRouteWithChildren
   '/app/audit': typeof AppAuditRoute
   '/app/branches': typeof AppBranchesRoute
   '/app/collections': typeof AppCollectionsRoute
@@ -587,6 +629,7 @@ export interface FileRoutesByFullPath {
   '/app/users': typeof AppUsersRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
+  '/app/approvals/$id': typeof AppApprovalsIdRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
   '/app/customers/new': typeof AppCustomersNewRoute
   '/app/loans/$id': typeof AppLoansIdRoute
@@ -594,6 +637,7 @@ export interface FileRoutesByFullPath {
   '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
   '/app/users/$id': typeof AppUsersIdRoute
+  '/app/approvals/': typeof AppApprovalsIndexRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/loans/': typeof AppLoansIndexRoute
   '/app/products/': typeof AppProductsIndexRoute
@@ -605,7 +649,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/admin/profile': typeof AdminProfileRoute
-  '/app/approvals': typeof AppApprovalsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/branches': typeof AppBranchesRoute
   '/app/collections': typeof AppCollectionsRoute
@@ -615,6 +658,7 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
+  '/app/approvals/$id': typeof AppApprovalsIdRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
   '/app/customers/new': typeof AppCustomersNewRoute
   '/app/loans/$id': typeof AppLoansIdRoute
@@ -622,6 +666,7 @@ export interface FileRoutesByTo {
   '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
   '/app/users/$id': typeof AppUsersIdRoute
+  '/app/approvals': typeof AppApprovalsIndexRoute
   '/app/customers': typeof AppCustomersIndexRoute
   '/app/loans': typeof AppLoansIndexRoute
   '/app/products': typeof AppProductsIndexRoute
@@ -636,7 +681,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/admin/profile': typeof AdminProfileRoute
-  '/app/approvals': typeof AppApprovalsRoute
+  '/app/approvals': typeof AppApprovalsRouteWithChildren
   '/app/audit': typeof AppAuditRoute
   '/app/branches': typeof AppBranchesRoute
   '/app/collections': typeof AppCollectionsRoute
@@ -650,6 +695,7 @@ export interface FileRoutesById {
   '/app/users': typeof AppUsersRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
+  '/app/approvals/$id': typeof AppApprovalsIdRoute
   '/app/customers/$id': typeof AppCustomersIdRoute
   '/app/customers/new': typeof AppCustomersNewRoute
   '/app/loans/$id': typeof AppLoansIdRoute
@@ -657,6 +703,7 @@ export interface FileRoutesById {
   '/app/products/$id': typeof AppProductsIdRoute
   '/app/products/new': typeof AppProductsNewRoute
   '/app/users/$id': typeof AppUsersIdRoute
+  '/app/approvals/': typeof AppApprovalsIndexRoute
   '/app/customers/': typeof AppCustomersIndexRoute
   '/app/loans/': typeof AppLoansIndexRoute
   '/app/products/': typeof AppProductsIndexRoute
@@ -686,6 +733,7 @@ export interface FileRouteTypes {
     | '/app/users'
     | '/admin/'
     | '/app/'
+    | '/app/approvals/$id'
     | '/app/customers/$id'
     | '/app/customers/new'
     | '/app/loans/$id'
@@ -693,6 +741,7 @@ export interface FileRouteTypes {
     | '/app/products/$id'
     | '/app/products/new'
     | '/app/users/$id'
+    | '/app/approvals/'
     | '/app/customers/'
     | '/app/loans/'
     | '/app/products/'
@@ -703,7 +752,6 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/admin/profile'
-    | '/app/approvals'
     | '/app/audit'
     | '/app/branches'
     | '/app/collections'
@@ -713,6 +761,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/admin'
     | '/app'
+    | '/app/approvals/$id'
     | '/app/customers/$id'
     | '/app/customers/new'
     | '/app/loans/$id'
@@ -720,6 +769,7 @@ export interface FileRouteTypes {
     | '/app/products/$id'
     | '/app/products/new'
     | '/app/users/$id'
+    | '/app/approvals'
     | '/app/customers'
     | '/app/loans'
     | '/app/products'
@@ -746,6 +796,7 @@ export interface FileRouteTypes {
     | '/app/users'
     | '/admin/'
     | '/app/'
+    | '/app/approvals/$id'
     | '/app/customers/$id'
     | '/app/customers/new'
     | '/app/loans/$id'
@@ -753,6 +804,7 @@ export interface FileRouteTypes {
     | '/app/products/$id'
     | '/app/products/new'
     | '/app/users/$id'
+    | '/app/approvals/'
     | '/app/customers/'
     | '/app/loans/'
     | '/app/products/'
@@ -828,7 +880,11 @@ export const routeTree = rootRoute
     },
     "/app/approvals": {
       "filePath": "app/approvals.tsx",
-      "parent": "/app"
+      "parent": "/app",
+      "children": [
+        "/app/approvals/$id",
+        "/app/approvals/"
+      ]
     },
     "/app/audit": {
       "filePath": "app/audit.tsx",
@@ -902,6 +958,10 @@ export const routeTree = rootRoute
       "filePath": "app/index.tsx",
       "parent": "/app"
     },
+    "/app/approvals/$id": {
+      "filePath": "app/approvals.$id.tsx",
+      "parent": "/app/approvals"
+    },
     "/app/customers/$id": {
       "filePath": "app/customers.$id.tsx",
       "parent": "/app/customers"
@@ -929,6 +989,10 @@ export const routeTree = rootRoute
     "/app/users/$id": {
       "filePath": "app/users.$id.tsx",
       "parent": "/app/users"
+    },
+    "/app/approvals/": {
+      "filePath": "app/approvals.index.tsx",
+      "parent": "/app/approvals"
     },
     "/app/customers/": {
       "filePath": "app/customers.index.tsx",

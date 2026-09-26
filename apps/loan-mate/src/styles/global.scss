@@ -170,6 +170,30 @@ p {
   font-size: 0.875rem;
 }
 
+.lm-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem 1.5rem;
+  margin: 0;
+}
+
+.lm-details div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.lm-details dt {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+
+.lm-details dd {
+  margin: 0;
+}
+
 .lm-badge {
   display: inline-flex;
   align-items: center;

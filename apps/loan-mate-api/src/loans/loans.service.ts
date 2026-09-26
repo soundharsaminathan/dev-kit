@@ -33,6 +33,7 @@ import type {
   DisburseLoanDto,
   RateChangeDto,
   RejectLoanDto,
+  UpdateLoanAmountsDto,
 } from "./dto/loan.dto";
 import { projectedScheduleRows, scheduleRow } from "./loan-schedule";
 
@@ -245,6 +246,99 @@ export class LoansService {
       nextEmi: next?.remaining ?? 0,
       rows,
     };
+  }
+
+  async updateAmounts(actor: AuthUser, id: string, dto: UpdateLoanAmountsDto) {
+    const loan = await this.get(actor, id);
+    const editable: LoanStatus[] = [
+      LoanStatus.DRAFT,
+      LoanStatus.SUBMITTED,
+      LoanStatus.VERIFIED,
+      LoanStatus.APPROVED,
+    ];
+    if (!editable.includes(loan.status) || loan.installments.length > 0) {
+      throw new BadRequestException(
+        "Loan amount can only be edited before disbursement",
+      );
+    }
+
+    const principal = dto.principal ?? toNumber(loan.principal);
+    const annualRatePercent =
+      dto.annualRatePercent ?? toNumber(loan.annualRatePercent);
+    const tenureInstallments =
+      dto.tenureInstallments ?? loan.tenureInstallments;
+    const processingFee = dto.processingFee ?? toNumber(loan.processingFee);
+    const catalogRate = rateForFrequency(loan.product, loan.frequency);
+    const rateOverride = money(annualRatePercent) !== money(catalogRate);
+    const tenureOverride = tenureInstallments !== loan.product.defaultTenure;
+    const productOverride =
+      rateOverride ||
+      tenureOverride ||
+      money(principal) !== money(toNumber(loan.product.defaultPrincipal));
+
+    const before = {
+      principal: toNumber(loan.principal),
+      annualRatePercent: toNumber(loan.annualRatePercent),
+      tenureInstallments: loan.tenureInstallments,
+      processingFee: toNumber(loan.processingFee),
+    };
+
+    await this.prisma.loan.update({
+      where: { id },
+      data: {
+        principal: money(principal),
+        annualRatePercent: money(annualRatePercent),
+        tenureInstallments,
+        processingFee: money(processingFee),
+        rateOverride,
+        tenureOverride,
+        productOverride,
+      },
+    });
+
+    const pending = await this.prisma.approvalRequest.findMany({
+      where: {
+        loanId: id,
+        status: ApprovalStatus.PENDING,
+        type: {
+          in: [ApprovalType.LOAN_APPROVAL, ApprovalType.PRODUCT_OVERRIDE],
+        },
+      },
+    });
+    for (const request of pending) {
+      const payload = {
+        ...(request.payload as Record<string, unknown>),
+        loanNumber: loan.loanNumber,
+        principal,
+        annualRatePercent,
+        tenureInstallments,
+        processingFee,
+        rateOverride,
+        tenureOverride,
+        productOverride,
+      };
+      await this.prisma.approvalRequest.update({
+        where: { id: request.id },
+        data: { payload },
+      });
+    }
+
+    await this.audit.append({
+      companyId: loan.companyId,
+      actorId: actor.id,
+      action: "loan.amounts.update",
+      entityType: "Loan",
+      entityId: id,
+      before,
+      after: {
+        principal,
+        annualRatePercent,
+        tenureInstallments,
+        processingFee,
+      },
+    });
+
+    return this.get(actor, id);
   }
 
   private async transition(

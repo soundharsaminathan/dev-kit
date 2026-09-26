@@ -70,6 +70,18 @@ export class ApprovalsService {
     });
   }
 
+  async getForActor(actor: AuthUser, id: string) {
+    const companyId = requireCompany(actor);
+    const request = await this.prisma.approvalRequest.findUnique({
+      where: { id },
+      include: { maker: { select: { id: true, name: true, email: true } } },
+    });
+    if (!request || request.companyId !== companyId) {
+      throw new NotFoundException("Approval not found");
+    }
+    return request;
+  }
+
   async approve(checker: AuthUser, id: string, reason?: string) {
     return this.decide(checker, id, ApprovalStatus.APPROVED, reason);
   }

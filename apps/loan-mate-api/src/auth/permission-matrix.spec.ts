@@ -92,6 +92,14 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     ],
   },
   {
+    action: "loans.amounts.update",
+    allowed: [
+      UserRole.COMPANY_OWNER,
+      UserRole.COMPANY_ADMIN,
+      UserRole.APPROVER,
+    ],
+  },
+  {
     action: "loans.disburse",
     allowed: [
       UserRole.COMPANY_OWNER,
@@ -154,9 +162,9 @@ describe("permission matrix", () => {
         if (allowed) {
           expect(guard.canActivate(mockContext(role) as never)).toBe(true);
         } else {
-          expect(() =>
-            guard.canActivate(mockContext(role) as never),
-          ).toThrow(ForbiddenException);
+          expect(() => guard.canActivate(mockContext(role) as never)).toThrow(
+            ForbiddenException,
+          );
         }
       }
     });

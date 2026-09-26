@@ -3,6 +3,7 @@ import {
   Get,
   Inject,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from "@nestjs/common";
@@ -18,6 +19,7 @@ import {
   PenaltyOverrideDto,
   RateChangeDto,
   RejectLoanDto,
+  UpdateLoanAmountsDto,
 } from "./dto/loan.dto";
 import { LoansService } from "./loans.service";
 
@@ -109,6 +111,16 @@ export class LoansController {
   )
   requestApproval(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.loans.requestApproval(user, id);
+  }
+
+  @Patch(":id/amounts")
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
+  updateAmounts(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @BodyDto(UpdateLoanAmountsDto) dto: UpdateLoanAmountsDto,
+  ) {
+    return this.loans.updateAmounts(user, id, dto);
   }
 
   @Post(":id/approve")

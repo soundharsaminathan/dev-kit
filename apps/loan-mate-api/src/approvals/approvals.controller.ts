@@ -7,13 +7,13 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "../generated/prisma/client";
 import { AuthGuard } from "../auth/auth.guard";
-import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { UserRole } from "../generated/prisma/client";
 import { ApprovalsService } from "./approvals.service";
-import { CreateApprovalDto, DecideApprovalDto } from "./dto/approval.dto";
+import type { CreateApprovalDto, DecideApprovalDto } from "./dto/approval.dto";
 
 @Controller("approvals")
 @UseGuards(AuthGuard, RolesGuard)
@@ -35,31 +35,25 @@ export class ApprovalsController {
   }
 
   @Get()
-  @Roles(
-    UserRole.COMPANY_OWNER,
-    UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
-  )
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
   list(@CurrentUser() user: AuthUser) {
     return this.approvals.listPending(user);
   }
 
   @Get("pending")
-  @Roles(
-    UserRole.COMPANY_OWNER,
-    UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
-  )
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
   listPending(@CurrentUser() user: AuthUser) {
     return this.approvals.listPending(user);
   }
 
+  @Get(":id")
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
+  get(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.approvals.getForActor(user, id);
+  }
+
   @Post(":id/approve")
-  @Roles(
-    UserRole.COMPANY_OWNER,
-    UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
-  )
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
   approve(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
@@ -69,11 +63,7 @@ export class ApprovalsController {
   }
 
   @Post(":id/reject")
-  @Roles(
-    UserRole.COMPANY_OWNER,
-    UserRole.COMPANY_ADMIN,
-    UserRole.APPROVER,
-  )
+  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
   reject(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
