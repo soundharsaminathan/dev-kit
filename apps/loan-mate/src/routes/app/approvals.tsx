@@ -16,6 +16,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { formatApprovalPayload } from "@/lib/approval-summary";
 import { useAuth } from "@/lib/auth";
+import { APPROVAL_PAGE_ROLES } from "@/lib/page-access";
+import { requireAuth } from "@/lib/require-auth";
 import { FormError } from "@/modules/ui/controls";
 import { FormInput } from "@/modules/ui/form-fields";
 
@@ -32,6 +34,14 @@ type Approval = {
 };
 
 export const Route = createFileRoute("/app/approvals")({
+  beforeLoad: ({ context, location }) => {
+    requireAuth(context.auth, {
+      roles: [...APPROVAL_PAGE_ROLES],
+      fallback: "/app",
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: ApprovalsPage,
 });
 
@@ -81,98 +91,105 @@ function ApprovalsPage() {
 
       <Card>
         <CardContent>
-        {approvals.isLoading ? <Skeleton /> : null}
-        {approvals.isError ? (
-          <FormError>{(approvals.error as Error).message}</FormError>
-        ) : null}
-        {approvals.data?.length === 0 ? (
-          <Empty>
-            <EmptyDescription>No pending approvals.</EmptyDescription>
-          </Empty>
-        ) : null}
-        {approvals.data && approvals.data.length > 0 ? (
-          <Table<Approval> aria-label="Approvals" items={approvals.data}>
-            <TableHeader>
-              <TableColumn id="type" isRowHeader>
-                Type
-              </TableColumn>
-              <TableColumn id="summary">Summary</TableColumn>
-              <TableColumn id="maker">Requested by</TableColumn>
-              <TableColumn id="created">Created</TableColumn>
-              <TableColumn id="actions">Actions</TableColumn>
-            </TableHeader>
-            <TableBody<Approval>>
-              {(approval) => (
-                <TableRow>
-                  {(column) => (
-                    <TableCell>
-                      {column.id === "type" ? (
-                        <Badge appearance="subtle">
-                          {approval.type ?? approval.entityType ?? "—"}
-                        </Badge>
-                      ) : null}
-                      {column.id === "summary"
-                        ? `${formatApprovalPayload(
-                            approval.payload as Record<string, unknown> | undefined,
-                          )}${approval.reason ? ` — ${approval.reason}` : ""}`
-                        : null}
-                      {column.id === "maker" ? (approval.maker?.name ?? "—") : null}
-                      {column.id === "created"
-                        ? approval.createdAt
-                          ? new Date(approval.createdAt).toLocaleString()
-                          : "—"
-                        : null}
-                      {column.id === "actions" ? (
-                        <div className="lm-actions">
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            isDisabled={decide.isPending}
-                            onClick={() =>
-                              decide.mutate({
-                                id: approval.id,
-                                decision: "approve",
-                              })
-                            }
-                          >
-                            Approve
-                          </Button>
-                          <FormInput
-                            label="Reject reason"
-                            value={reason[approval.id] ?? ""}
-                            onChange={(value) =>
-                              setReason((current) => ({
-                                ...current,
-                                [approval.id]: value,
-                              }))
-                            }
-                          />
-                          <Button
-                            type="button"
-                            variant="danger"
-                            size="sm"
-                            isDisabled={decide.isPending}
-                            onClick={() => {
-                              const rejectionReason = reason[approval.id]?.trim();
-                              decide.mutate({
-                                id: approval.id,
-                                decision: "reject",
-                                ...(rejectionReason ? { rejectionReason } : {}),
-                              });
-                            }}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      ) : null}
-                    </TableCell>
-                  )}
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        ) : null}
+          {approvals.isLoading ? <Skeleton /> : null}
+          {approvals.isError ? (
+            <FormError>{(approvals.error as Error).message}</FormError>
+          ) : null}
+          {approvals.data?.length === 0 ? (
+            <Empty>
+              <EmptyDescription>No pending approvals.</EmptyDescription>
+            </Empty>
+          ) : null}
+          {approvals.data && approvals.data.length > 0 ? (
+            <Table<Approval> aria-label="Approvals" items={approvals.data}>
+              <TableHeader>
+                <TableColumn id="type" isRowHeader>
+                  Type
+                </TableColumn>
+                <TableColumn id="summary">Summary</TableColumn>
+                <TableColumn id="maker">Requested by</TableColumn>
+                <TableColumn id="created">Created</TableColumn>
+                <TableColumn id="actions">Actions</TableColumn>
+              </TableHeader>
+              <TableBody<Approval>>
+                {(approval) => (
+                  <TableRow>
+                    {(column) => (
+                      <TableCell>
+                        {column.id === "type" ? (
+                          <Badge appearance="subtle">
+                            {approval.type ?? approval.entityType ?? "—"}
+                          </Badge>
+                        ) : null}
+                        {column.id === "summary"
+                          ? `${formatApprovalPayload(
+                              approval.payload as
+                                | Record<string, unknown>
+                                | undefined,
+                            )}${approval.reason ? ` — ${approval.reason}` : ""}`
+                          : null}
+                        {column.id === "maker"
+                          ? (approval.maker?.name ?? "—")
+                          : null}
+                        {column.id === "created"
+                          ? approval.createdAt
+                            ? new Date(approval.createdAt).toLocaleString()
+                            : "—"
+                          : null}
+                        {column.id === "actions" ? (
+                          <div className="lm-actions">
+                            <Button
+                              type="button"
+                              variant="primary"
+                              size="sm"
+                              isDisabled={decide.isPending}
+                              onClick={() =>
+                                decide.mutate({
+                                  id: approval.id,
+                                  decision: "approve",
+                                })
+                              }
+                            >
+                              Approve
+                            </Button>
+                            <FormInput
+                              label="Reject reason"
+                              value={reason[approval.id] ?? ""}
+                              onChange={(value) =>
+                                setReason((current) => ({
+                                  ...current,
+                                  [approval.id]: value,
+                                }))
+                              }
+                            />
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="sm"
+                              isDisabled={decide.isPending}
+                              onClick={() => {
+                                const rejectionReason =
+                                  reason[approval.id]?.trim();
+                                decide.mutate({
+                                  id: approval.id,
+                                  decision: "reject",
+                                  ...(rejectionReason
+                                    ? { rejectionReason }
+                                    : {}),
+                                });
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : null}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          ) : null}
         </CardContent>
       </Card>
     </div>

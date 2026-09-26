@@ -9,6 +9,8 @@ import {
   PAYMENT_MODES,
   type PaymentMode,
 } from "@/lib/constants";
+import { COLLECTION_PAGE_ROLES } from "@/lib/page-access";
+import { requireAuth } from "@/lib/require-auth";
 import {
   FormCheckbox,
   FormError,
@@ -29,6 +31,14 @@ type Loan = {
 type CollectionsSearch = { loanId?: string };
 
 export const Route = createFileRoute("/app/collections")({
+  beforeLoad: ({ context, location }) => {
+    requireAuth(context.auth, {
+      roles: [...COLLECTION_PAGE_ROLES],
+      fallback: "/app",
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   validateSearch: (search: Record<string, unknown>): CollectionsSearch => {
     const next: CollectionsSearch = {};
     if (typeof search.loanId === "string") {
@@ -58,13 +68,14 @@ function CollectionsPage() {
   const loans = useQuery({
     queryKey: ["loans", "collections"],
     queryFn: async () => {
-      const all = await api.get<
-        Array<
-          Loan & {
-            customer?: { name?: string };
-          }
-        >
-      >("/loans");
+      const all =
+        await api.get<
+          Array<
+            Loan & {
+              customer?: { name?: string };
+            }
+          >
+        >("/loans");
       return all
         .filter((l) =>
           ["DISBURSED", "ACTIVE", "WRITTEN_OFF"].includes(l.status),
@@ -209,14 +220,14 @@ function CollectionsPage() {
               options={ADVANCE_TREATMENTS.map((t) => ({
                 value: t,
                 label:
-                  t === "SKIP_NEXT_EMI" ? "Skip next EMI" : t.replaceAll("_", " "),
+                  t === "SKIP_NEXT_EMI"
+                    ? "Skip next EMI"
+                    : t.replaceAll("_", " "),
               }))}
             />
           ) : null}
           {error ? <FormError>{error}</FormError> : null}
-          {success ? (
-            <FormSuccess>{success}</FormSuccess>
-          ) : null}
+          {success ? <FormSuccess>{success}</FormSuccess> : null}
           <Button type="submit" variant="primary" isDisabled={pay.isPending}>
             Record payment
           </Button>

@@ -94,7 +94,10 @@ function NewLoanPage() {
         monthlyFirstEmiOption: form.monthlyFirstEmiOption,
       }),
     onSuccess: (data) => {
-      void navigate({ to: "/app/loans/$id", params: { id: data.id } });
+      void navigate({
+        to: "/app/loans/$id/schedule",
+        params: { id: data.id },
+      });
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : "Failed to create loan");
@@ -244,7 +247,11 @@ function NewLoanPage() {
           />
           {error ? <FormError>{error}</FormError> : null}
           <div className="lm-actions">
-            <Button type="submit" variant="primary" isDisabled={create.isPending}>
+            <Button
+              type="submit"
+              variant="primary"
+              isDisabled={create.isPending}
+            >
               Create loan
             </Button>
             <Button

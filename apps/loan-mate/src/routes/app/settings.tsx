@@ -4,8 +4,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { ADVANCE_TREATMENTS, type AdvanceTreatment } from "@/lib/constants";
+import { SETTINGS_PAGE_ROLES } from "@/lib/page-access";
+import { requireAuth } from "@/lib/require-auth";
 import { useCompanyId } from "@/lib/use-company-id";
-import { FormCheckbox, FormError, FormInput, FormSelect, FormSuccess } from "@/modules/ui/form-fields";
+import {
+  FormCheckbox,
+  FormError,
+  FormInput,
+  FormSelect,
+  FormSuccess,
+} from "@/modules/ui/form-fields";
 
 type CompanyResponse = {
   id: string;
@@ -20,6 +28,14 @@ type CompanyResponse = {
 };
 
 export const Route = createFileRoute("/app/settings")({
+  beforeLoad: ({ context, location }) => {
+    requireAuth(context.auth, {
+      roles: [...SETTINGS_PAGE_ROLES],
+      fallback: "/app",
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: SettingsPage,
 });
 
@@ -179,9 +195,7 @@ function SettingsPage() {
             ))}
           </div>
           {error ? <FormError>{error}</FormError> : null}
-          {success ? (
-            <FormSuccess>{success}</FormSuccess>
-          ) : null}
+          {success ? <FormSuccess>{success}</FormSuccess> : null}
           <Button type="submit" variant="primary" isDisabled={save.isPending}>
             Save settings
           </Button>

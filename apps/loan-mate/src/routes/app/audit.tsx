@@ -5,6 +5,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { downloadAuthed } from "@/lib/download";
+import { AUDIT_PAGE_ROLES } from "@/lib/page-access";
+import { requireAuth } from "@/lib/require-auth";
 import { FormError, FormInput } from "@/modules/ui/form-fields";
 
 type AuditRow = {
@@ -18,6 +20,14 @@ type AuditRow = {
 };
 
 export const Route = createFileRoute("/app/audit")({
+  beforeLoad: ({ context, location }) => {
+    requireAuth(context.auth, {
+      roles: [...AUDIT_PAGE_ROLES],
+      fallback: "/app",
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
   component: AuditPage,
 });
 

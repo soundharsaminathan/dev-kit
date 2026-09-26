@@ -27,13 +27,14 @@ import {
 } from "../generated/prisma/client";
 import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { generateSchedule } from "../schedules/domain/emi";
+import { generateSchedule, round2 } from "../schedules/domain/emi";
 import type {
   CreateLoanDto,
   DisburseLoanDto,
   RateChangeDto,
   RejectLoanDto,
 } from "./dto/loan.dto";
+import { projectedScheduleRows, scheduleRow } from "./loan-schedule";
 
 @Injectable()
 export class LoansService {
@@ -190,6 +191,60 @@ export class LoansService {
     assertBranchAccess(actor, loan.branchId);
     const dpd = computeLoanDpd(loan.installments);
     return { ...loan, dpd };
+  }
+
+  async schedule(actor: AuthUser, id: string) {
+    const loan = await this.get(actor, id);
+    const live = loan.installments.length > 0;
+    const rows = live
+      ? loan.installments.map((inst) =>
+          scheduleRow({
+            number: inst.number,
+            dueDate: inst.dueDate,
+            principalDue: toNumber(inst.principalDue),
+            interestDue: toNumber(inst.interestDue),
+            penaltyDue: toNumber(inst.penaltyDue),
+            paidPrincipal: toNumber(inst.paidPrincipal),
+            paidInterest: toNumber(inst.paidInterest),
+            paidPenalty: toNumber(inst.paidPenalty),
+            status: inst.status,
+          }),
+        )
+      : projectedScheduleRows(
+          generateSchedule({
+            principal: toNumber(loan.principal),
+            annualRatePercent: toNumber(loan.annualRatePercent),
+            tenureInstallments: loan.tenureInstallments,
+            frequency: loan.frequency,
+            disbursementDate: new Date(),
+            monthlyFirstEmiOption: loan.monthlyFirstEmiOption,
+            processingFee: toNumber(loan.processingFee),
+          }),
+        );
+
+    const settled = rows.filter(
+      (row) => row.status === "PAID" || row.status === "SKIPPED",
+    ).length;
+    const outstanding = rows.reduce((sum, row) => sum + row.remaining, 0);
+    const next = rows.find(
+      (row) => row.status !== "PAID" && row.status !== "SKIPPED",
+    );
+
+    return {
+      projected: !live,
+      loanId: loan.id,
+      loanNumber: loan.loanNumber,
+      customerName: loan.customer.name,
+      customerId: loan.customerId,
+      loanStatus: loan.status,
+      frequency: loan.frequency,
+      paidCount: settled,
+      installmentCount: rows.length,
+      outstanding: round2(outstanding),
+      nextDueDate: next?.dueDate ?? null,
+      nextEmi: next?.remaining ?? 0,
+      rows,
+    };
   }
 
   private async transition(

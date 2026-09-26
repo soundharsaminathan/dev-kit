@@ -53,6 +53,19 @@ export class LoansController {
     return this.loans.list(user);
   }
 
+  @Get(":id/schedule")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+    UserRole.LOAN_OFFICER,
+    UserRole.APPROVER,
+    UserRole.COLLECTION_OFFICER,
+  )
+  schedule(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.loans.schedule(user, id);
+  }
+
   @Get(":id")
   @Roles(
     UserRole.COMPANY_OWNER,

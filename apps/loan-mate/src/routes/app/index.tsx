@@ -3,6 +3,12 @@ import { Icon } from "@dev-ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
+import {
+  APPROVAL_PAGE_ROLES,
+  COLLECTION_PAGE_ROLES,
+  ORIGINATION_ROLES,
+  roleAllowed,
+} from "@/lib/page-access";
 
 export const Route = createFileRoute("/app/")({
   component: DashboardPage,
@@ -19,12 +25,17 @@ function DashboardPage() {
     queryKey: ["loans", "count"],
     queryFn: () => api.get<Array<{ status: string }>>("/loans"),
   });
+  const canApprove = roleAllowed(user?.role, APPROVAL_PAGE_ROLES);
+  const canOriginate = roleAllowed(user?.role, ORIGINATION_ROLES);
+  const canCollect = roleAllowed(user?.role, COLLECTION_PAGE_ROLES);
+
   const approvals = useQuery({
     queryKey: ["approvals", "pending"],
+    enabled: canApprove,
     queryFn: () =>
-      api.get<unknown[]>("/approvals?status=PENDING").catch(() =>
-        api.get<unknown[]>("/approvals"),
-      ),
+      api
+        .get<unknown[]>("/approvals?status=PENDING")
+        .catch(() => api.get<unknown[]>("/approvals")),
   });
 
   const activeLoans =
@@ -55,33 +66,43 @@ function DashboardPage() {
           <strong>{loans.isLoading ? "…" : activeLoans}</strong>
           <span>Active / disbursed loans</span>
         </div>
-        <div className="lm-stat">
-          <strong>
-            {approvals.isLoading ? "…" : (approvals.data?.length ?? "—")}
-          </strong>
-          <span>Pending approvals</span>
-        </div>
+        {canApprove ? (
+          <div className="lm-stat">
+            <strong>
+              {approvals.isLoading ? "…" : (approvals.data?.length ?? "—")}
+            </strong>
+            <span>Pending approvals</span>
+          </div>
+        ) : null}
       </div>
 
       <div className="lm-card">
         <h2>Quick links</h2>
         <div className="lm-actions">
-          <Button as={Link} to="/app/customers/new" variant="primary">
-            <Icon name="plus" />
-            New customer
-          </Button>
-          <Button as={Link} to="/app/loans/new" variant="outline">
-            <Icon name="wallet" />
-            New loan
-          </Button>
-          <Button as={Link} to="/app/collections" variant="outline">
-            <Icon name="credit-card" />
-            Record payment
-          </Button>
-          <Button as={Link} to="/app/approvals" variant="outline">
-            <Icon name="badge-check" />
-            Review approvals
-          </Button>
+          {canOriginate ? (
+            <Button as={Link} to="/app/customers/new" variant="primary">
+              <Icon name="plus" />
+              New customer
+            </Button>
+          ) : null}
+          {canOriginate ? (
+            <Button as={Link} to="/app/loans/new" variant="outline">
+              <Icon name="wallet" />
+              New loan
+            </Button>
+          ) : null}
+          {canCollect ? (
+            <Button as={Link} to="/app/collections" variant="outline">
+              <Icon name="credit-card" />
+              Record payment
+            </Button>
+          ) : null}
+          {canApprove ? (
+            <Button as={Link} to="/app/approvals" variant="outline">
+              <Icon name="badge-check" />
+              Review approvals
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
