@@ -107,6 +107,19 @@ export class ApprovalApplicatorService {
           payload,
         );
         break;
+      case ApprovalType.FEE_WAIVER:
+        await this.payments.applyFeeWaiver(
+          actor,
+          request.loanId ?? request.entityId,
+          Number(payload.amount),
+        );
+        break;
+      case ApprovalType.LOAN_NPA_MARK:
+        await this.loans.applyLoanNpaMark(actor, request.entityId, payload);
+        break;
+      case ApprovalType.LOAN_NPA_CLEAR:
+        await this.loans.applyLoanNpaClear(actor, request.entityId);
+        break;
       case ApprovalType.OTHER:
         break;
       default:

@@ -34,6 +34,7 @@ import type {
   RateChangeDto,
   RejectLoanDto,
   UpdateLoanAmountsDto,
+  VerifyLoanDto,
 } from "./dto/loan.dto";
 import { projectedScheduleRows, scheduleRow } from "./loan-schedule";
 
@@ -79,6 +80,44 @@ export class LoansService {
       throw new NotFoundException("Branch not found");
     }
     if (!company) throw new NotFoundException("Company not found");
+
+    if (dto.loanOfficerId) {
+      const officer = await this.prisma.user.findUnique({
+        where: { id: dto.loanOfficerId },
+      });
+      if (
+        !officer ||
+        !officer.active ||
+        officer.companyId !== companyId ||
+        (officer.role !== UserRole.LOAN_OFFICER &&
+          officer.role !== UserRole.BRANCH_MANAGER)
+      ) {
+        throw new BadRequestException(
+          "Loan officer must be an active officer or branch manager in this company",
+        );
+      }
+    }
+    if (dto.renewedFromLoanId) {
+      const prior = await this.prisma.loan.findUnique({
+        where: { id: dto.renewedFromLoanId },
+      });
+      if (
+        !prior ||
+        prior.companyId !== companyId ||
+        prior.customerId !== dto.customerId ||
+        prior.status !== LoanStatus.CLOSED
+      ) {
+        throw new BadRequestException(
+          "Renewal must reference a closed loan for the same customer",
+        );
+      }
+    }
+    if (
+      (dto.moratoriumInstallments ?? 0) >=
+      (dto.tenureInstallments ?? product.defaultTenure)
+    ) {
+      throw new BadRequestException("Moratorium must be shorter than tenure");
+    }
 
     const principal = dto.principal ?? toNumber(product.defaultPrincipal);
     const tenureInstallments = dto.tenureInstallments ?? product.defaultTenure;
@@ -127,6 +166,18 @@ export class LoansService {
           typeof processingFee === "string"
             ? processingFee
             : money(processingFee),
+        purpose: dto.purpose,
+        loanType: dto.loanType,
+        interestMethod: dto.interestMethod,
+        appliedAmount: money(principal),
+        processingFeeGst: money(dto.processingFeeGst ?? 0),
+        insuranceAmount: money(dto.insuranceAmount ?? 0),
+        otherCharges: money(dto.otherCharges ?? 0),
+        moratoriumInstallments: dto.moratoriumInstallments ?? 0,
+        graceInstallments: dto.graceInstallments ?? 0,
+        prepaymentAllowed: dto.prepaymentAllowed ?? true,
+        loanOfficerId: dto.loanOfficerId,
+        renewedFromLoanId: dto.renewedFromLoanId,
         rateOverride,
         tenureOverride,
         productOverride,
@@ -184,6 +235,11 @@ export class LoansService {
         customer: true,
         product: true,
         branch: true,
+        loanOfficer: { select: { id: true, name: true, role: true } },
+        collaterals: true,
+        guarantors: true,
+        verifications: true,
+        tranches: { orderBy: { number: "asc" } },
         installments: { orderBy: { number: "asc" } },
       },
     });
@@ -212,15 +268,7 @@ export class LoansService {
           }),
         )
       : projectedScheduleRows(
-          generateSchedule({
-            principal: toNumber(loan.principal),
-            annualRatePercent: toNumber(loan.annualRatePercent),
-            tenureInstallments: loan.tenureInstallments,
-            frequency: loan.frequency,
-            disbursementDate: new Date(),
-            monthlyFirstEmiOption: loan.monthlyFirstEmiOption,
-            processingFee: toNumber(loan.processingFee),
-          }),
+          generateSchedule(this.scheduleInput(loan, new Date())),
         );
 
     const settled = rows.filter(
@@ -385,7 +433,7 @@ export class LoansService {
     );
   }
 
-  async verify(actor: AuthUser, id: string) {
+  async verify(actor: AuthUser, id: string, dto?: VerifyLoanDto) {
     const loan = await this.get(actor, id);
     const customer = loan.customer;
     if (!customer.pan?.trim()) {
@@ -406,6 +454,16 @@ export class LoansService {
         "At least one KYC document required before verify",
       );
     }
+    await this.prisma.loanVerification.create({
+      data: {
+        loanId: id,
+        verifiedById: actor.id,
+        verificationType: dto?.verificationType ?? "FIELD",
+        remarks: dto?.remarks,
+        gps: dto?.gps,
+        visitedAt: dto?.visitedAt ? new Date(dto.visitedAt) : new Date(),
+      },
+    });
     return this.transition(
       actor,
       id,
@@ -492,13 +550,17 @@ export class LoansService {
         throw new BadRequestException("Product override not applied");
       }
     }
-    return this.transition(
+    const approved = await this.transition(
       actor,
       loanId,
       [LoanStatus.VERIFIED],
       LoanStatus.APPROVED,
       "approve",
     );
+    return this.prisma.loan.update({
+      where: { id: loanId },
+      data: { approvedAmount: approved.principal },
+    });
   }
 
   reject(actor: AuthUser, id: string, dto: RejectLoanDto) {
@@ -519,15 +581,12 @@ export class LoansService {
     }
 
     const disbursementDate = new Date(dto.disbursementDate);
-    const result = generateSchedule({
-      principal: toNumber(loan.principal),
-      annualRatePercent: toNumber(loan.annualRatePercent),
-      tenureInstallments: loan.tenureInstallments,
-      frequency: loan.frequency,
-      disbursementDate,
-      monthlyFirstEmiOption: loan.monthlyFirstEmiOption,
-      processingFee: toNumber(loan.processingFee),
-    });
+    const result = generateSchedule(this.scheduleInput(loan, disbursementDate));
+    const charges = round2(
+      toNumber(loan.processingFeeGst) +
+        toNumber(loan.insuranceAmount) +
+        toNumber(loan.otherCharges),
+    );
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.installment.createMany({
@@ -550,6 +609,18 @@ export class LoansService {
           disbursementReference: dto.reference,
           netDisbursement: money(result.netDisbursement),
           partialInterestDeducted: money(result.partialInterestDeducted),
+          disbursedAmount: loan.principal,
+          chargesOutstanding: money(charges),
+        },
+      });
+      await tx.disbursementTranche.create({
+        data: {
+          loanId: id,
+          number: 1,
+          amount: money(result.netDisbursement),
+          mode: dto.mode ?? "CASH",
+          reference: dto.reference,
+          paidAt: disbursementDate,
         },
       });
 
@@ -724,6 +795,7 @@ export class LoansService {
           ? "CONVERT_TO_1ST_NEXT_MONTH"
           : "EXACT_DAY",
       processingFee: 0,
+      interestMethod: loan.interestMethod,
     });
 
     // Prefer keeping original due dates; overwrite principal/interest on unpaid rows
@@ -765,6 +837,66 @@ export class LoansService {
     });
 
     return updated;
+  }
+
+  private scheduleInput(
+    loan: {
+      principal: { toNumber(): number } | number;
+      annualRatePercent: { toNumber(): number } | number;
+      tenureInstallments: number;
+      frequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY";
+      monthlyFirstEmiOption:
+        | "EXACT_DAY"
+        | "CONVERT_TO_1ST_PARTIAL"
+        | "CONVERT_TO_1ST_NEXT_MONTH";
+      processingFee: { toNumber(): number } | number;
+      interestMethod: "FLAT" | "REDUCING" | "REDUCING_DAILY";
+      moratoriumInstallments: number;
+      graceInstallments: number;
+      processingFeeGst: { toNumber(): number } | number;
+      insuranceAmount: { toNumber(): number } | number;
+      otherCharges: { toNumber(): number } | number;
+    },
+    disbursementDate: Date,
+  ) {
+    return {
+      principal: toNumber(loan.principal),
+      annualRatePercent: toNumber(loan.annualRatePercent),
+      tenureInstallments: loan.tenureInstallments,
+      frequency: loan.frequency,
+      disbursementDate,
+      monthlyFirstEmiOption: loan.monthlyFirstEmiOption,
+      processingFee: toNumber(loan.processingFee),
+      interestMethod: loan.interestMethod,
+      moratoriumInstallments: loan.moratoriumInstallments,
+      graceInstallments: loan.graceInstallments,
+      processingFeeGst: toNumber(loan.processingFeeGst),
+      insuranceAmount: toNumber(loan.insuranceAmount),
+      otherCharges: toNumber(loan.otherCharges),
+    };
+  }
+
+  async applyLoanNpaMark(
+    actor: AuthUser,
+    loanId: string,
+    payload: Record<string, unknown>,
+  ) {
+    const loan = await this.get(actor, loanId);
+    if (loan.npa) throw new BadRequestException("Loan is already NPA");
+    const category = String(payload.category ?? "SUBSTANDARD");
+    return this.prisma.loan.update({
+      where: { id: loanId },
+      data: { npa: true, npaDate: new Date(), npaCategory: category },
+    });
+  }
+
+  async applyLoanNpaClear(actor: AuthUser, loanId: string) {
+    const loan = await this.get(actor, loanId);
+    if (!loan.npa) throw new BadRequestException("Loan is not NPA");
+    return this.prisma.loan.update({
+      where: { id: loanId },
+      data: { npa: false, npaDate: null, npaCategory: null },
+    });
   }
 }
 

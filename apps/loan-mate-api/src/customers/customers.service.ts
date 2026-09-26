@@ -14,7 +14,7 @@ import { assertSameCompany, requireCompany } from "../common/tenancy";
 import { ApprovalType, LoanStatus, UserRole } from "../generated/prisma/client";
 import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
-import {
+import type {
   AssignCollectionOfficerDto,
   BlacklistCustomerDto,
   CreateCustomerDto,
@@ -31,6 +31,41 @@ const ASSIGNABLE_ROLES: UserRole[] = [
   UserRole.COLLECTION_OFFICER,
   UserRole.BRANCH_MANAGER,
 ];
+
+const FILE_INCLUDE = {
+  createdBy: { select: CUSTOMER_STAFF_SELECT },
+  collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
+  addresses: true,
+  employments: true,
+  bankAccounts: true,
+  nominees: true,
+  references: true,
+  kycRecords: true,
+} as const;
+
+function profileData(dto: CreateCustomerDto | UpdateCustomerDto) {
+  return {
+    firstName: dto.firstName,
+    middleName: dto.middleName,
+    lastName: dto.lastName,
+    gender: dto.gender,
+    dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+    fatherName: dto.fatherName,
+    motherName: dto.motherName,
+    spouseName: dto.spouseName,
+    maritalStatus: dto.maritalStatus,
+    alternateMobile: dto.alternateMobile,
+    email: dto.email,
+    whatsapp: dto.whatsapp,
+    aadhaar: dto.aadhaar,
+    voterId: dto.voterId,
+    drivingLicence: dto.drivingLicence,
+    passportNo: dto.passportNo,
+    creditScore: dto.creditScore,
+    riskCategory: dto.riskCategory,
+    notes: dto.notes,
+  };
+}
 
 @Injectable()
 export class CustomersService {
@@ -59,11 +94,9 @@ export class CustomersService {
           pan: dto.pan.toUpperCase(),
           address: dto.address,
           createdById: actor.id,
+          ...profileData(dto),
         },
-        include: {
-          createdBy: { select: CUSTOMER_STAFF_SELECT },
-          collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
-        },
+        include: FILE_INCLUDE,
       });
       await this.audit.append({
         companyId,
@@ -91,10 +124,7 @@ export class CustomersService {
     const companyId = requireCompany(actor);
     return this.prisma.customer.findMany({
       where: { companyId },
-      include: {
-        createdBy: { select: CUSTOMER_STAFF_SELECT },
-        collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
-      },
+      include: FILE_INCLUDE,
       orderBy: { createdAt: "desc" },
     });
   }
@@ -102,10 +132,7 @@ export class CustomersService {
   async get(actor: AuthUser, id: string) {
     const customer = await this.prisma.customer.findUnique({
       where: { id },
-      include: {
-        createdBy: { select: CUSTOMER_STAFF_SELECT },
-        collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
-      },
+      include: FILE_INCLUDE,
     });
     if (!customer) throw new NotFoundException("Customer not found");
     assertSameCompany(actor, customer.companyId);
@@ -125,10 +152,14 @@ export class CustomersService {
         where: { id: collectionOfficerId },
       });
       if (!officer || !officer.active) {
-        throw new BadRequestException("Collection officer not found or inactive");
+        throw new BadRequestException(
+          "Collection officer not found or inactive",
+        );
       }
       if (officer.companyId !== customer.companyId) {
-        throw new BadRequestException("Officer must belong to the same company");
+        throw new BadRequestException(
+          "Officer must belong to the same company",
+        );
       }
       if (!ASSIGNABLE_ROLES.includes(officer.role)) {
         throw new BadRequestException(
@@ -169,11 +200,9 @@ export class CustomersService {
           mobile: dto.mobile,
           pan: dto.pan?.toUpperCase(),
           address: dto.address,
+          ...profileData(dto),
         },
-        include: {
-          createdBy: { select: CUSTOMER_STAFF_SELECT },
-          collectionOfficer: { select: CUSTOMER_STAFF_SELECT },
-        },
+        include: FILE_INCLUDE,
       });
       await this.audit.append({
         companyId: customer.companyId,

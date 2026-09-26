@@ -14,6 +14,7 @@ import {
 } from "../generated/prisma/client";
 import { NotificationService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { approvalApplies } from "../schedules/domain/lms-rules";
 import { ApprovalApplicatorService } from "./approval-applicator.service";
 import type { CreateApprovalDto } from "./dto/approval.dto";
 
@@ -136,6 +137,26 @@ export class ApprovalsService {
     });
 
     if (status === ApprovalStatus.APPROVED) {
+      const settings = await this.prisma.companySettings.findUnique({
+        where: { companyId: request.companyId },
+      });
+      const required = settings?.approvalLevels ?? 1;
+      if (!approvalApplies(request.level, required)) {
+        await this.prisma.approvalRequest.create({
+          data: {
+            companyId: request.companyId,
+            type: request.type,
+            entityType: request.entityType,
+            entityId: request.entityId,
+            payload: request.payload as Prisma.InputJsonValue,
+            reason: request.reason,
+            makerId: checker.id,
+            loanId: request.loanId,
+            level: request.level + 1,
+          },
+        });
+        return updated;
+      }
       await this.applicator.apply(checker, updated);
       return this.prisma.approvalRequest.findUnique({ where: { id } });
     }

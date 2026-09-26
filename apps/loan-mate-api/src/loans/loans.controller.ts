@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Inject,
@@ -14,19 +15,28 @@ import { RolesGuard } from "../auth/roles.guard";
 import { BodyDto } from "../common/body-dto";
 import { UserRole } from "../generated/prisma/client";
 import {
+  CollateralDto,
   CreateLoanDto,
   DisburseLoanDto,
+  GuarantorDto,
+  LoanNpaDto,
   PenaltyOverrideDto,
   RateChangeDto,
   RejectLoanDto,
+  TrancheDto,
   UpdateLoanAmountsDto,
+  VerifyLoanDto,
 } from "./dto/loan.dto";
+import { LoanExtrasService } from "./loan-extras.service";
 import { LoansService } from "./loans.service";
 
 @Controller("loans")
 @UseGuards(AuthGuard, RolesGuard)
 export class LoansController {
-  constructor(@Inject(LoansService) private readonly loans: LoansService) {}
+  constructor(
+    @Inject(LoansService) private readonly loans: LoansService,
+    @Inject(LoanExtrasService) private readonly extras: LoanExtrasService,
+  ) {}
 
   @Post()
   @Roles(
@@ -98,8 +108,12 @@ export class LoansController {
     UserRole.COMPANY_ADMIN,
     UserRole.BRANCH_MANAGER,
   )
-  verify(@CurrentUser() user: AuthUser, @Param("id") id: string) {
-    return this.loans.verify(user, id);
+  verify(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @BodyDto(VerifyLoanDto) dto: VerifyLoanDto,
+  ) {
+    return this.loans.verify(user, id, dto);
   }
 
   @Post(":id/request-approval")
@@ -200,5 +214,77 @@ export class LoansController {
     @BodyDto(RateChangeDto) dto: RateChangeDto,
   ) {
     return this.loans.applyRateChange(user, id, dto);
+  }
+
+  @Post(":id/collaterals")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+    UserRole.LOAN_OFFICER,
+  )
+  addCollateral(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @BodyDto(CollateralDto) dto: CollateralDto,
+  ) {
+    return this.extras.addCollateral(user, id, dto);
+  }
+
+  @Post(":id/guarantors")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+    UserRole.LOAN_OFFICER,
+  )
+  addGuarantor(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @BodyDto(GuarantorDto) dto: GuarantorDto,
+  ) {
+    return this.extras.addGuarantor(user, id, dto);
+  }
+
+  @Post(":id/tranches")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+  )
+  addTranche(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @BodyDto(TrancheDto) dto: TrancheDto,
+  ) {
+    return this.extras.addTranche(user, id, dto);
+  }
+
+  @Post(":id/request-npa")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+  )
+  requestNpa(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @BodyDto(LoanNpaDto) dto: LoanNpaDto,
+  ) {
+    return this.extras.requestNpa(user, id, dto);
+  }
+
+  @Post(":id/request-npa-clear")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+  )
+  requestNpaClear(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.extras.requestNpaClear(user, id, body.reason);
   }
 }

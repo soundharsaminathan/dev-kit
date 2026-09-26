@@ -3,6 +3,7 @@ import { AccountingModule } from "../accounting/accounting.module";
 import { ApprovalsModule } from "../approvals/approvals.module";
 import { AuditModule } from "../audit/audit.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { LoanExtrasService } from "./loan-extras.service";
 import { LoansController } from "./loans.controller";
 import { LoansService } from "./loans.service";
 
@@ -14,7 +15,7 @@ import { LoansService } from "./loans.service";
     forwardRef(() => ApprovalsModule),
   ],
   controllers: [LoansController],
-  providers: [LoansService],
+  providers: [LoansService, LoanExtrasService],
   exports: [LoansService],
 })
 export class LoansModule {}

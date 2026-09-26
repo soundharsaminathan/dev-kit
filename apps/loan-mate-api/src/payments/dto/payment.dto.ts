@@ -35,6 +35,34 @@ export class RecordPaymentDto {
   @IsOptional()
   @IsEnum(AdvanceTreatment)
   advanceTreatment?: AdvanceTreatment;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsDateString()
+  chequeDate?: string;
+}
+
+export class ReprintReceiptDto {
+  @IsString()
+  @MinLength(1)
+  reason!: string;
+}
+
+export class FeeWaiverDto {
+  @IsString()
+  @MinLength(1)
+  loanId!: string;
+
+  @IsNumber()
+  @Min(0.01)
+  amount!: number;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }
 
 export class RequestReversalDto {

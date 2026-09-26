@@ -62,6 +62,30 @@ enum PaymentMode {
   BANK_TRANSFER
   NEFT
   RTGS
+  CHEQUE
+}
+
+enum InterestMethod {
+  FLAT
+  REDUCING
+  REDUCING_DAILY
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+}
+
+enum DocumentStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }
 
 enum AdvanceTreatment {
@@ -90,6 +114,9 @@ enum ApprovalType {
   SETTLEMENT
   WRITE_OFF
   RESTRUCTURE
+  FEE_WAIVER
+  LOAN_NPA_MARK
+  LOAN_NPA_CLEAR
   OTHER
 }
 
@@ -162,9 +189,15 @@ model Company {
 model Branch {
   id        String   @id @default(cuid())
   companyId String
-  name      String
-  code      String
-  active    Boolean  @default(true)
+  name         String
+  code         String
+  address      String?
+  city         String?
+  state        String?
+  phone        String?
+  email        String?
+  isHeadOffice Boolean  @default(false)
+  active       Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -185,6 +218,7 @@ model CompanySettings {
   defaultAdvanceTreatments     AdvanceTreatment[]     @default([REDUCE_PRINCIPAL, SKIP_NEXT_EMI, PARK_AS_ADVANCE])
   foreclosureChargePercent     Decimal                @default(0) @db.Decimal(8, 4)
   maxRestructures              Int                    @default(3)
+  approvalLevels               Int                    @default(1)
   createdAt                    DateTime               @default(now())
   updatedAt                    DateTime               @updatedAt
 
@@ -196,6 +230,7 @@ model User {
   email        String    @unique
   passwordHash String?
   name         String
+  phone        String?
   role         UserRole
   companyId    String?
   branchId     String?
@@ -214,6 +249,8 @@ model User {
   notifications    Notification[]
   customersCreated Customer[]        @relation("CustomerCreator")
   customersAssigned Customer[]       @relation("CustomerCollector")
+  loansAsOfficer   Loan[]            @relation("LoanOfficer")
+  reviewedDocuments Document[]       @relation("DocumentReviewer")
 
   @@index([companyId])
   @@index([branchId])
@@ -227,6 +264,25 @@ model Customer {
   mobile               String
   pan                  String
   address              String?
+  firstName            String?
+  middleName           String?
+  lastName             String?
+  gender               String?
+  dateOfBirth          DateTime? @db.Date
+  fatherName           String?
+  motherName           String?
+  spouseName           String?
+  maritalStatus        String?
+  alternateMobile      String?
+  email                String?
+  whatsapp             String?
+  aadhaar              String?
+  voterId              String?
+  drivingLicence       String?
+  passportNo           String?
+  creditScore          Int?
+  riskCategory         String?
+  notes                String?
   blacklisted          Boolean   @default(false)
   blacklistReason      String?
   npa                  Boolean   @default(false)
@@ -243,6 +299,12 @@ model Customer {
   createdBy          User?   @relation("CustomerCreator", fields: [createdById], references: [id])
   collectionOfficer  User?   @relation("CustomerCollector", fields: [collectionOfficerId], references: [id])
   loans              Loan[]
+  addresses          CustomerAddress[]
+  employments        CustomerEmployment[]
+  bankAccounts       CustomerBankAccount[]
+  nominees           CustomerNominee[]
+  references         CustomerReference[]
+  kycRecords         CustomerKyc[]
 
   @@unique([companyId, mobile])
   @@unique([companyId, pan])
@@ -306,6 +368,24 @@ model Loan {
   closedAt                DateTime?
   writtenOffAt            DateTime?
   rejectionReason         String?
+  purpose                 String?
+  loanType                String?
+  interestMethod          InterestMethod         @default(REDUCING_DAILY)
+  appliedAmount           Decimal?               @db.Decimal(14, 2)
+  approvedAmount          Decimal?               @db.Decimal(14, 2)
+  disbursedAmount         Decimal?               @db.Decimal(14, 2)
+  processingFeeGst        Decimal                @default(0) @db.Decimal(14, 2)
+  insuranceAmount         Decimal                @default(0) @db.Decimal(14, 2)
+  otherCharges            Decimal                @default(0) @db.Decimal(14, 2)
+  chargesOutstanding      Decimal                @default(0) @db.Decimal(14, 2)
+  moratoriumInstallments  Int                    @default(0)
+  graceInstallments       Int                    @default(0)
+  prepaymentAllowed       Boolean                @default(true)
+  loanOfficerId           String?
+  renewedFromLoanId       String?
+  npa                     Boolean                @default(false)
+  npaDate                 DateTime?              @db.Date
+  npaCategory             String?
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt
 
@@ -313,11 +393,18 @@ model Loan {
   branch       Branch              @relation(fields: [branchId], references: [id])
   customer     Customer            @relation(fields: [customerId], references: [id])
   product      LoanProduct         @relation(fields: [productId], references: [id])
+  loanOfficer  User?               @relation("LoanOfficer", fields: [loanOfficerId], references: [id])
+  renewedFrom  Loan?               @relation("LoanRenewal", fields: [renewedFromLoanId], references: [id])
+  renewals     Loan[]              @relation("LoanRenewal")
   installments Installment[]
   payments     Payment[]
   approvals    ApprovalRequest[]
   closures     LoanClosure[]
   restructures LoanRestructure[]
+  collaterals  LoanCollateral[]
+  guarantors   LoanGuarantor[]
+  verifications LoanVerification[]
+  tranches     DisbursementTranche[]
 
   @@index([companyId, status])
   @@index([customerId])
@@ -358,6 +445,8 @@ model Payment {
   mode             PaymentMode
   reference        String?
   details          String?
+  bankName         String?
+  chequeDate       DateTime?         @db.Date
   advanceTreatment AdvanceTreatment?
   reversed         Boolean           @default(false)
   reversedAt       DateTime?
@@ -369,6 +458,7 @@ model Payment {
   loan        Loan                @relation(fields: [loanId], references: [id])
   recordedBy  User                @relation("PaymentRecorder", fields: [recordedById], references: [id])
   allocations PaymentAllocation[]
+  reprints    ReceiptReprint[]
 
   @@index([loanId])
   @@index([companyId])
@@ -403,6 +493,7 @@ model ApprovalRequest {
   decidedAt   DateTime?
   appliedAt   DateTime?
   loanId      String?
+  level       Int            @default(1)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -462,12 +553,18 @@ model Document {
   objectKey    String
   fileName     String
   contentType  String
-  sizeBytes    Int?
-  uploadedById String?
-  createdAt    DateTime           @default(now())
+  sizeBytes       Int?
+  uploadedById    String?
+  status          DocumentStatus @default(PENDING_REVIEW)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime           @default(now())
 
-  company    Company @relation(fields: [companyId], references: [id])
-  uploadedBy User?   @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  company    Company           @relation(fields: [companyId], references: [id])
+  uploadedBy User?             @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  reviewedBy User?             @relation("DocumentReviewer", fields: [reviewedById], references: [id])
+  versions   DocumentVersion[]
 
   @@index([companyId, entityType, entityId])
 }
@@ -532,6 +629,7 @@ model JournalEntry {
   memo         String?
   sourceType   JournalSourceType
   sourceId     String?
+  status       JournalStatus     @default(POSTED)
   createdById  String?
   createdAt    DateTime          @default(now())
 
@@ -575,4 +673,185 @@ model Notification {
 
   @@index([userId, readAt])
   @@index([companyId, createdAt])
+}
+
+model CustomerAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  postalCode String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model CustomerEmployment {
+  id           String   @id @default(cuid())
+  customerId   String
+  employerName String
+  designation  String?
+  monthlyIncome Decimal @db.Decimal(14, 2)
+  isCurrent    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model CustomerBankAccount {
+  id            String   @id @default(cuid())
+  customerId    String
+  bankName      String
+  accountNumber String
+  ifsc          String
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model CustomerNominee {
+  id           String   @id @default(cuid())
+  customerId   String
+  name         String
+  relationship String
+  mobile       String?
+  createdAt    DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model CustomerReference {
+  id           String   @id @default(cuid())
+  customerId   String
+  name         String
+  relationship String?
+  mobile       String
+  createdAt    DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model CustomerKyc {
+  id                String    @id @default(cuid())
+  customerId        String
+  documentType      String
+  documentNumber    String
+  issuingAuthority  String?
+  issueDate         DateTime? @db.Date
+  expiryDate        DateTime? @db.Date
+  status            KycStatus @default(PENDING)
+  rejectionReason   String?
+  verifiedById      String?
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model LoanCollateral {
+  id              String    @id @default(cuid())
+  loanId          String
+  collateralType  String
+  description     String?
+  ownerName       String?
+  estimatedValue  Decimal   @db.Decimal(14, 2)
+  releasedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+}
+
+model LoanGuarantor {
+  id           String   @id @default(cuid())
+  loanId       String
+  name         String
+  relationship String?
+  mobile       String
+  pan          String?
+  monthlyIncome Decimal? @db.Decimal(14, 2)
+  hasSigned    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+}
+
+model LoanVerification {
+  id               String   @id @default(cuid())
+  loanId           String
+  verifiedById     String
+  verificationType String   @default("FIELD")
+  remarks          String?
+  checklist        Json?
+  gps              String?
+  visitedAt        DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+}
+
+model DisbursementTranche {
+  id        String      @id @default(cuid())
+  loanId    String
+  number    Int
+  amount    Decimal     @db.Decimal(14, 2)
+  mode      PaymentMode
+  reference String?
+  paidAt    DateTime    @db.Date
+  createdAt DateTime    @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@unique([loanId, number])
+  @@index([loanId])
+}
+
+model ReceiptReprint {
+  id          String   @id @default(cuid())
+  paymentId   String
+  reprintedById String
+  reason      String
+  createdAt   DateTime @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+}
+
+model DocumentVersion {
+  id            String   @id @default(cuid())
+  documentId    String
+  versionNumber Int
+  objectKey     String
+  fileName      String
+  contentType   String
+  sizeBytes     Int?
+  uploadedById  String?
+  createdAt     DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, versionNumber])
+  @@index([documentId])
 }

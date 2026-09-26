@@ -31,8 +31,13 @@ import {
   totalOutstanding,
 } from "../schedules/domain/allocation";
 import { round2 } from "../schedules/domain/emi";
+import {
+  chequeRejection,
+  feeWaiverRejection,
+} from "../schedules/domain/lms-rules";
 import { computePenaltyDue } from "../schedules/domain/penalty";
 import type {
+  FeeWaiverDto,
   RecordPaymentDto,
   RequestReversalDto,
   RequestWaiverDto,
@@ -117,6 +122,8 @@ export class PaymentsService {
     if (!collectible) {
       throw new BadRequestException("Loan is not collectible");
     }
+    const chequeError = chequeRejection(dto.mode, dto.bankName, dto.chequeDate);
+    if (chequeError) throw new BadRequestException(chequeError);
 
     const paymentDate = new Date(dto.paymentDate);
     const graceDays = loan.company.settings?.graceDays ?? 0;
@@ -190,6 +197,8 @@ export class PaymentsService {
           mode: dto.mode,
           reference: dto.reference,
           details: dto.details,
+          bankName: dto.bankName,
+          chequeDate: dto.chequeDate ? new Date(dto.chequeDate) : undefined,
           recordedById: actor.id,
         },
       });
@@ -331,6 +340,8 @@ export class PaymentsService {
             mode: dto.mode,
             reference: dto.reference,
             details: dto.details,
+            bankName: dto.bankName,
+            chequeDate: dto.chequeDate ? new Date(dto.chequeDate) : undefined,
             advanceTreatment: treatment,
             recordedById: actor.id,
           },
@@ -360,6 +371,8 @@ export class PaymentsService {
             amount: money(excess),
             paymentDate,
             mode: dto.mode,
+            bankName: dto.bankName,
+            chequeDate: dto.chequeDate ? new Date(dto.chequeDate) : undefined,
             advanceTreatment: treatment,
             recordedById: actor.id,
             reference: dto.reference,
@@ -426,6 +439,8 @@ export class PaymentsService {
           amount: money(excess),
           paymentDate,
           mode: dto.mode,
+          bankName: dto.bankName,
+          chequeDate: dto.chequeDate ? new Date(dto.chequeDate) : undefined,
           advanceTreatment: treatment,
           recordedById: actor.id,
           reference: dto.reference,
@@ -483,6 +498,8 @@ export class PaymentsService {
           amount: money(excess),
           paymentDate,
           mode: dto.mode,
+          bankName: dto.bankName,
+          chequeDate: dto.chequeDate ? new Date(dto.chequeDate) : undefined,
           advanceTreatment: treatment,
           recordedById: actor.id,
           reference: dto.reference,
@@ -790,8 +807,78 @@ export class PaymentsService {
     assertBranchAccess(actor, loan.branchId);
     return this.prisma.payment.findMany({
       where: { loanId },
-      include: { allocations: true },
+      include: { allocations: true, reprints: true },
       orderBy: { paymentDate: "desc" },
     });
+  }
+
+  async reprint(actor: AuthUser, paymentId: string, reason: string) {
+    if (!reason.trim()) {
+      throw new BadRequestException("Reprint reason required");
+    }
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { loan: true },
+    });
+    if (!payment) throw new NotFoundException("Receipt not found");
+    assertSameCompany(actor, payment.companyId);
+    const row = await this.prisma.receiptReprint.create({
+      data: { paymentId, reprintedById: actor.id, reason: reason.trim() },
+    });
+    await this.audit.append({
+      companyId: payment.companyId,
+      actorId: actor.id,
+      action: "payment.reprint",
+      entityType: "Payment",
+      entityId: paymentId,
+      reason,
+    });
+    return row;
+  }
+
+  async requestFeeWaiver(actor: AuthUser, dto: FeeWaiverDto) {
+    const loan = await this.prisma.loan.findUnique({
+      where: { id: dto.loanId },
+    });
+    if (!loan) throw new NotFoundException("Loan not found");
+    assertSameCompany(actor, loan.companyId);
+    const rejection = feeWaiverRejection(
+      dto.amount,
+      toNumber(loan.chargesOutstanding),
+    );
+    if (rejection) throw new BadRequestException(rejection);
+    return this.approvals.create(actor, {
+      type: ApprovalType.FEE_WAIVER,
+      entityType: "Loan",
+      entityId: loan.id,
+      loanId: loan.id,
+      payload: { amount: dto.amount },
+      reason: dto.reason,
+    });
+  }
+
+  async applyFeeWaiver(actor: AuthUser, loanId: string, amount: number) {
+    const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
+    if (!loan) throw new NotFoundException("Loan not found");
+    assertSameCompany(actor, loan.companyId);
+    const rejection = feeWaiverRejection(
+      amount,
+      toNumber(loan.chargesOutstanding),
+    );
+    if (rejection) throw new BadRequestException(rejection);
+    const next = round2(toNumber(loan.chargesOutstanding) - amount);
+    const updated = await this.prisma.loan.update({
+      where: { id: loanId },
+      data: { chargesOutstanding: money(next) },
+    });
+    await this.audit.append({
+      companyId: loan.companyId,
+      actorId: actor.id,
+      action: "fee.waiver",
+      entityType: "Loan",
+      entityId: loanId,
+      after: { chargesOutstanding: next, waived: amount },
+    });
+    return updated;
   }
 }

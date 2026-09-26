@@ -2,6 +2,7 @@ import { forwardRef, Module } from "@nestjs/common";
 import { ApprovalsModule } from "../approvals/approvals.module";
 import { AuditModule } from "../audit/audit.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { CustomerFileService } from "./customer-file.service";
 import { CustomersController } from "./customers.controller";
 import { CustomersService } from "./customers.service";
 
@@ -12,7 +13,7 @@ import { CustomersService } from "./customers.service";
     forwardRef(() => ApprovalsModule),
   ],
   controllers: [CustomersController],
-  providers: [CustomersService],
+  providers: [CustomersService, CustomerFileService],
   exports: [CustomersService],
 })
 export class CustomersModule {}

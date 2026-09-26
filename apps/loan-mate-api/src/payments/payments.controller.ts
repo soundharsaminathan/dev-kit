@@ -13,7 +13,9 @@ import { RolesGuard } from "../auth/roles.guard";
 import { BodyDto } from "../common/body-dto";
 import { UserRole } from "../generated/prisma/client";
 import {
+  FeeWaiverDto,
   RecordPaymentDto,
+  ReprintReceiptDto,
   RequestReversalDto,
   RequestWaiverDto,
 } from "./dto/payment.dto";
@@ -106,5 +108,34 @@ export class PaymentsController {
     @BodyDto(RequestWaiverDto) dto: RequestWaiverDto,
   ) {
     return this.payments.executeWaiver(user, dto.installmentId, dto.amount);
+  }
+
+  @Post(":id/reprint")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+    UserRole.COLLECTION_OFFICER,
+  )
+  reprint(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @BodyDto(ReprintReceiptDto) dto: ReprintReceiptDto,
+  ) {
+    return this.payments.reprint(user, id, dto.reason);
+  }
+
+  @Post("fee-waiver/request")
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+    UserRole.COLLECTION_OFFICER,
+  )
+  requestFeeWaiver(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(FeeWaiverDto) dto: FeeWaiverDto,
+  ) {
+    return this.payments.requestFeeWaiver(user, dto);
   }
 }

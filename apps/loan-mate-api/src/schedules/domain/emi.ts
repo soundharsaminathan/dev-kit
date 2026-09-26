@@ -16,7 +16,11 @@ export function addDays(date: Date, days: number): Date {
   return d;
 }
 
-export function clampDayOfMonth(year: number, month: number, day: number): Date {
+export function clampDayOfMonth(
+  year: number,
+  month: number,
+  day: number,
+): Date {
   const last = new Date(year, month + 1, 0).getDate();
   return new Date(year, month, Math.min(day, last));
 }
@@ -28,6 +32,8 @@ export type MonthlyFirstEmiOption =
   | "CONVERT_TO_1ST_PARTIAL"
   | "CONVERT_TO_1ST_NEXT_MONTH";
 
+export type InterestMethod = "FLAT" | "REDUCING" | "REDUCING_DAILY";
+
 export interface EmiScheduleInput {
   principal: number;
   annualRatePercent: number;
@@ -36,6 +42,13 @@ export interface EmiScheduleInput {
   disbursementDate: Date;
   monthlyFirstEmiOption?: MonthlyFirstEmiOption;
   processingFee?: number;
+  /** Defaults to REDUCING_DAILY so existing loans keep Actual/365. */
+  interestMethod?: InterestMethod;
+  moratoriumInstallments?: number;
+  graceInstallments?: number;
+  processingFeeGst?: number;
+  insuranceAmount?: number;
+  otherCharges?: number;
 }
 
 export interface ScheduleRow {
@@ -60,7 +73,20 @@ function periodDays(frequency: PaymentFrequency): number {
   return 30; // nominal for EMI formula; actual dates use calendar months
 }
 
-function equatedEmi(principal: number, periodicRate: number, n: number): number {
+function nominalPeriodicRate(
+  annualRatePercent: number,
+  frequency: PaymentFrequency,
+): number {
+  if (frequency === "WEEKLY") return annualRatePercent / 100 / 52;
+  if (frequency === "BIWEEKLY") return annualRatePercent / 100 / 26;
+  return annualRatePercent / 100 / 12;
+}
+
+function equatedEmi(
+  principal: number,
+  periodicRate: number,
+  n: number,
+): number {
   if (n <= 0) return 0;
   if (periodicRate === 0) return round2(principal / n);
   const factor = (1 + periodicRate) ** n;
@@ -162,19 +188,48 @@ export function generateSchedule(input: EmiScheduleInput): EmiScheduleResult {
     disbursementDate,
     monthlyFirstEmiOption = "EXACT_DAY",
     processingFee = 0,
+    interestMethod = "REDUCING_DAILY",
+    moratoriumInstallments = 0,
+    graceInstallments = 0,
+    processingFeeGst = 0,
+    insuranceAmount = 0,
+    otherCharges = 0,
   } = input;
 
   if (principal <= 0 || n <= 0) {
     throw new Error("principal and tenureInstallments must be positive");
   }
+  if (moratoriumInstallments < 0 || graceInstallments < 0) {
+    throw new Error("moratorium and grace cannot be negative");
+  }
+  if (moratoriumInstallments >= n) {
+    throw new Error("moratorium must be shorter than tenure");
+  }
 
-  const { dueDate: firstDue, partialInterestDays } = firstDueDate(
+  const first = firstDueDate(
     disbursementDate,
     frequency,
     monthlyFirstEmiOption,
   );
+  let firstDue = first.dueDate;
+  let partialInterestDays = first.partialInterestDays;
+  const exactDayForGrace =
+    frequency === "MONTHLY" && monthlyFirstEmiOption === "EXACT_DAY"
+      ? disbursementDate.getDate()
+      : frequency === "MONTHLY"
+        ? 1
+        : undefined;
+  for (let g = 0; g < graceInstallments; g++) {
+    firstDue = nextDueDate(firstDue, frequency, exactDayForGrace);
+  }
+  if (
+    graceInstallments > 0 &&
+    monthlyFirstEmiOption === "CONVERT_TO_1ST_PARTIAL"
+  ) {
+    partialInterestDays = daysBetween(disbursementDate, firstDue);
+  }
 
-  let workingPrincipal = principal;
+  const workingPrincipal = principal;
   let partialInterestDeducted = 0;
   if (partialInterestDays > 0) {
     partialInterestDeducted = interestForDays(
@@ -186,8 +241,21 @@ export function generateSchedule(input: EmiScheduleInput): EmiScheduleResult {
   }
 
   const pDays = periodDays(frequency);
-  const periodicRate = (annualRatePercent * pDays) / (100 * 365);
-  const emiAmount = equatedEmi(workingPrincipal, periodicRate, n);
+  const periodicRate =
+    interestMethod === "REDUCING"
+      ? nominalPeriodicRate(annualRatePercent, frequency)
+      : (annualRatePercent * pDays) / (100 * 365);
+  const emiTenure = n - moratoriumInstallments;
+  const flatInterest =
+    interestMethod === "FLAT"
+      ? round2(
+          workingPrincipal * (annualRatePercent / 100) * ((n * pDays) / 365),
+        )
+      : 0;
+  const emiAmount =
+    interestMethod === "FLAT"
+      ? round2((workingPrincipal + flatInterest) / emiTenure)
+      : equatedEmi(workingPrincipal, periodicRate, emiTenure);
 
   const schedule: ScheduleRow[] = [];
   let outstanding = workingPrincipal;
@@ -202,17 +270,29 @@ export function generateSchedule(input: EmiScheduleInput): EmiScheduleResult {
 
   for (let i = 1; i <= n; i++) {
     const days = daysBetween(prevDate, due);
-    const interestDue = interestForDays(outstanding, annualRatePercent, days);
+    const interestDue =
+      interestMethod === "FLAT"
+        ? i === n
+          ? round2(flatInterest - round2(flatInterest / n) * (n - 1))
+          : round2(flatInterest / n)
+        : interestMethod === "REDUCING"
+          ? round2(outstanding * periodicRate)
+          : interestForDays(outstanding, annualRatePercent, days);
 
     let principalDue: number;
-    let interestFinal = interestDue;
+    const interestFinal = interestDue;
 
-    if (i === n) {
+    if (i <= moratoriumInstallments) {
+      principalDue = 0;
+    } else if (i === n) {
       principalDue = round2(outstanding);
-      // Final installment clears: interest + remaining principal
+    } else if (interestMethod === "FLAT") {
+      const principalEach = round2(workingPrincipal / emiTenure);
+      principalDue = round2(Math.min(outstanding, principalEach));
     } else {
-      principalDue = round2(Math.min(outstanding, Math.max(0, emiAmount - interestDue)));
-      // If EMI < interest (rare edge), pay interest only
+      principalDue = round2(
+        Math.min(outstanding, Math.max(0, emiAmount - interestDue)),
+      );
       if (principalDue <= 0 && outstanding > 0) {
         principalDue = 0;
       }
@@ -243,7 +323,12 @@ export function generateSchedule(input: EmiScheduleInput): EmiScheduleResult {
   }
 
   const netDisbursement = round2(
-    principal - processingFee - partialInterestDeducted,
+    principal -
+      processingFee -
+      processingFeeGst -
+      insuranceAmount -
+      otherCharges -
+      partialInterestDeducted,
   );
 
   return {
