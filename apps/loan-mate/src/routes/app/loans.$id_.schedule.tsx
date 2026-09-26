@@ -18,6 +18,7 @@ import { COLLECTION_PAGE_ROLES, roleAllowed } from "@/lib/page-access";
 import { FormError } from "@/modules/ui/controls";
 
 type ScheduleRow = {
+  id: string;
   number: number;
   dueDate: string;
   principalDue: number;
@@ -177,7 +178,13 @@ function LoanSchedulePage() {
       </div>
 
       <div className="lm-card lm-table-wrap">
-        <Table<ScheduleRow> aria-label="EMI schedule" items={data.rows}>
+        <Table<ScheduleRow>
+          aria-label="EMI schedule"
+          items={data.rows.map((row) => ({
+            ...row,
+            id: row.id || String(row.number),
+          }))}
+        >
           <TableHeader>
             <TableColumn id="number" isRowHeader>
               #

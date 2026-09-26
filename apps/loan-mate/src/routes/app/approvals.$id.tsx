@@ -71,6 +71,7 @@ type LoanDetail = {
 };
 
 type ScheduleRow = {
+  id: string;
   number: number;
   dueDate: string;
   principalDue: number;
@@ -609,7 +610,10 @@ function ApprovalReviewPage() {
           {schedule.data && schedule.data.rows.length > 0 ? (
             <Table<ScheduleRow>
               aria-label="EMI schedule"
-              items={schedule.data.rows}
+              items={schedule.data.rows.map((row) => ({
+                ...row,
+                id: row.id || String(row.number),
+              }))}
             >
               <TableHeader>
                 <TableColumn id="number" isRowHeader>

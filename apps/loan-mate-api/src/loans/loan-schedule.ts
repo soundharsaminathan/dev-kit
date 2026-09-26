@@ -1,6 +1,7 @@
 import { type EmiScheduleResult, round2 } from "../schedules/domain/emi";
 
 export type ScheduleRowView = {
+  id: string;
   number: number;
   dueDate: string;
   principalDue: number;
@@ -37,6 +38,7 @@ export function scheduleRow(input: {
     input.paidPrincipal + input.paidInterest + input.paidPenalty,
   );
   return {
+    id: String(input.number),
     number: input.number,
     dueDate: calendarDate(input.dueDate),
     principalDue: input.principalDue,
