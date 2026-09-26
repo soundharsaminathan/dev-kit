@@ -84,10 +84,20 @@ const PERMISSION_MATRIX: MatrixRow[] = [
     ],
   },
   {
-    action: "loans.approve / reject",
+    action: "loans.approve",
     allowed: [
       UserRole.COMPANY_OWNER,
       UserRole.COMPANY_ADMIN,
+      UserRole.APPROVER,
+    ],
+  },
+  {
+    action: "loans.reject",
+    allowed: [
+      UserRole.COMPANY_OWNER,
+      UserRole.COMPANY_ADMIN,
+      UserRole.BRANCH_MANAGER,
+      UserRole.LOAN_OFFICER,
       UserRole.APPROVER,
     ],
   },

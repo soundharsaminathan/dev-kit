@@ -8,7 +8,12 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { PAYMENT_MODES, type PaymentMode } from "@/lib/constants";
 import { DocumentsPanel } from "@/lib/documents-panel";
-import { COLLECTION_PAGE_ROLES, roleAllowed } from "@/lib/page-access";
+import {
+  COLLECTION_PAGE_ROLES,
+  LOAN_APPROVE_ROLES,
+  LOAN_REJECT_ROLES,
+  roleAllowed,
+} from "@/lib/page-access";
 import {
   FormError,
   FormInput,
@@ -356,17 +361,20 @@ function LoanDetailPage() {
               >
                 Request approval
               </Button>
-              <Button
-                type="button"
-                variant="primary"
-                isDisabled={busy}
-                onClick={() => approve.mutate()}
-              >
-                Approve
-              </Button>
+              {roleAllowed(user?.role, LOAN_APPROVE_ROLES) ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  isDisabled={busy}
+                  onClick={() => approve.mutate()}
+                >
+                  Approve
+                </Button>
+              ) : null}
             </>
           ) : null}
-          {["SUBMITTED", "VERIFIED"].includes(l.status) ? (
+          {["SUBMITTED", "VERIFIED"].includes(l.status) &&
+          roleAllowed(user?.role, LOAN_REJECT_ROLES) ? (
             <>
               <FormInput
                 label="Reject reason"

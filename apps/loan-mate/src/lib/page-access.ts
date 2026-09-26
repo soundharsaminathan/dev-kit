@@ -9,6 +9,22 @@ export const PRODUCT_PAGE_ROLES = [
   "APPROVER",
 ] as const satisfies readonly UserRole[];
 
+/** Roles that can reject a submitted or verified loan. */
+export const LOAN_REJECT_ROLES = [
+  "COMPANY_OWNER",
+  "COMPANY_ADMIN",
+  "BRANCH_MANAGER",
+  "LOAN_OFFICER",
+  "APPROVER",
+] as const satisfies readonly UserRole[];
+
+/** Roles that can approve a verified loan. */
+export const LOAN_APPROVE_ROLES = [
+  "COMPANY_OWNER",
+  "COMPANY_ADMIN",
+  "APPROVER",
+] as const satisfies readonly UserRole[];
+
 /** Roles that can list and decide approvals. */
 export const APPROVAL_PAGE_ROLES = [
   "COMPANY_OWNER",

@@ -130,7 +130,13 @@ export class LoansController {
   }
 
   @Post(":id/reject")
-  @Roles(UserRole.COMPANY_OWNER, UserRole.COMPANY_ADMIN, UserRole.APPROVER)
+  @Roles(
+    UserRole.COMPANY_OWNER,
+    UserRole.COMPANY_ADMIN,
+    UserRole.BRANCH_MANAGER,
+    UserRole.LOAN_OFFICER,
+    UserRole.APPROVER,
+  )
   reject(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
