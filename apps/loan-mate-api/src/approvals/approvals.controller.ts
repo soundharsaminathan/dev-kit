@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   Inject,
@@ -11,9 +10,10 @@ import { AuthGuard } from "../auth/auth.guard";
 import { type AuthUser, CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
+import { BodyDto } from "../common/body-dto";
 import { UserRole } from "../generated/prisma/client";
 import { ApprovalsService } from "./approvals.service";
-import type { CreateApprovalDto, DecideApprovalDto } from "./dto/approval.dto";
+import { CreateApprovalDto, DecideApprovalDto } from "./dto/approval.dto";
 
 @Controller("approvals")
 @UseGuards(AuthGuard, RolesGuard)
@@ -30,7 +30,10 @@ export class ApprovalsController {
     UserRole.LOAN_OFFICER,
     UserRole.COLLECTION_OFFICER,
   )
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreateApprovalDto) {
+  create(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(CreateApprovalDto) dto: CreateApprovalDto,
+  ) {
     return this.approvals.create(user, dto);
   }
 
@@ -57,7 +60,7 @@ export class ApprovalsController {
   approve(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: DecideApprovalDto,
+    @BodyDto(DecideApprovalDto) dto: DecideApprovalDto,
   ) {
     return this.approvals.approve(user, id, dto.reason);
   }
@@ -67,7 +70,7 @@ export class ApprovalsController {
   reject(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: DecideApprovalDto,
+    @BodyDto(DecideApprovalDto) dto: DecideApprovalDto,
   ) {
     return this.approvals.reject(user, id, dto.reason);
   }
