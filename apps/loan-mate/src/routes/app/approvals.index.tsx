@@ -22,6 +22,8 @@ type Approval = {
   type?: string;
   status: string;
   entityType?: string;
+  entityId?: string;
+  loanId?: string | null;
   createdAt?: string;
   reason?: string;
   maker?: { id: string; name: string; email: string };
@@ -104,12 +106,24 @@ function ApprovalsPage() {
                             type="button"
                             variant="primary"
                             size="sm"
-                            onClick={() =>
+                            onClick={() => {
+                              const loanId =
+                                approval.loanId ??
+                                (approval.entityType === "Loan"
+                                  ? approval.entityId
+                                  : null);
+                              if (loanId) {
+                                void navigate({
+                                  to: "/app/loans/$id",
+                                  params: { id: loanId },
+                                });
+                                return;
+                              }
                               void navigate({
                                 to: "/app/approvals/$id",
                                 params: { id: approval.id },
-                              })
-                            }
+                              });
+                            }}
                           >
                             Review
                           </Button>
