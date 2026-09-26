@@ -59,7 +59,7 @@
 
 .metric {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 40px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   padding: 16px;
@@ -68,14 +68,23 @@
   background: var(--color-card, #fff);
 }
 
-.metricIcon {
-  display: grid;
-  place-items: center;
+.metric .metricIcon,
+.metric .avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 999px;
-  background: var(--color-primary-muted, #ccfbf1);
+  line-height: 0;
+  font-size: 1rem;
   color: var(--color-primary, #0d9488);
+}
+
+.metricIcon :global(svg),
+.docIcon :global(svg) {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 
 .metric strong {
@@ -92,14 +101,15 @@
   line-height: 1rem;
 }
 
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
+.avatar,
+.metricIcon,
+.docIcon {
+  flex-shrink: 0;
   border-radius: 999px;
   background: var(--color-primary-muted, #ccfbf1);
-  color: var(--color-primary, #0d9488);
+}
+
+.avatar {
   font-weight: 700;
 }
 
@@ -191,13 +201,47 @@
 }
 
 .docIcon {
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
   border-radius: 8px;
   background: var(--color-muted, #f4f4f5);
   color: var(--color-fg-muted);
+  line-height: 0;
+}
+
+.preview {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 45%);
+}
+
+.previewCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(48rem, 100%);
+  max-height: calc(100dvh - 48px);
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl, 12px);
+  background: var(--color-card, #fff);
+}
+
+.previewCard img,
+.previewCard iframe {
+  width: 100%;
+  height: min(32rem, 70dvh);
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-muted, #f4f4f5);
+  object-fit: contain;
 }
 
 .doc p {

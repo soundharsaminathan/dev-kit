@@ -46,6 +46,8 @@ type DocumentRow = {
   id: string;
   kind: string;
   fileName: string;
+  contentType?: string;
+  readUrl?: string | null;
   createdAt?: string;
 };
 
@@ -145,6 +147,7 @@ export function LoanReviewScreen({
   const [reason, setReason] = useState("");
   const [held, setHeld] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentRow | null>(null);
+  const [docError, setDocError] = useState<string | null>(null);
 
   const customerId = loan.customer?.id;
   const schedule = useQuery({
@@ -191,6 +194,17 @@ export function LoanReviewScreen({
       at: loan.updatedAt ?? loan.createdAt,
       by: "Reviewer",
     });
+  }
+
+  function openDocument(doc: DocumentRow) {
+    const url = doc.readUrl?.trim();
+    if (!url || url.includes("example.local")) {
+      setDocError("This file is not available to open.");
+      setSelectedDoc(doc);
+      return;
+    }
+    setDocError(null);
+    setSelectedDoc(doc);
   }
 
   return (
@@ -440,22 +454,13 @@ export function LoanReviewScreen({
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelectedDoc(doc)}
+                        onClick={() => openDocument(doc)}
                       >
                         View
                       </Button>
                     </div>
                   ))
                 )}
-                {selectedDoc ? (
-                  <p className="lm-muted">
-                    {DOC_LABEL[selectedDoc.kind] ?? selectedDoc.kind}:{" "}
-                    {selectedDoc.fileName}
-                    {selectedDoc.createdAt
-                      ? ` · uploaded ${when(selectedDoc.createdAt)}`
-                      : ""}
-                  </p>
-                ) : null}
               </section>
             </div>
           ) : null}
@@ -654,6 +659,46 @@ export function LoanReviewScreen({
           </section>
         </aside>
       </div>
+
+      {selectedDoc ? (
+        <div
+          className={styles.preview}
+          role="dialog"
+          aria-modal="true"
+          aria-label={selectedDoc.fileName}
+        >
+          <div className={styles.previewCard}>
+            <div className={styles.header}>
+              <strong>
+                {DOC_LABEL[selectedDoc.kind] ?? selectedDoc.fileName}
+              </strong>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSelectedDoc(null)}
+              >
+                Close
+              </Button>
+            </div>
+            {docError ? <p className="lm-error">{docError}</p> : null}
+            {!docError && selectedDoc.readUrl ? (
+              selectedDoc.contentType?.startsWith("image/") ? (
+                <img src={selectedDoc.readUrl} alt={selectedDoc.fileName} />
+              ) : (
+                <iframe
+                  title={selectedDoc.fileName}
+                  src={selectedDoc.readUrl}
+                />
+              )
+            ) : null}
+            {!docError && selectedDoc.readUrl ? (
+              <a href={selectedDoc.readUrl} target="_blank" rel="noreferrer">
+                Open in a new tab
+              </a>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
