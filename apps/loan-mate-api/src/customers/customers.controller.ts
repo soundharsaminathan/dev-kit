@@ -17,7 +17,7 @@ import { BodyDto } from "../common/body-dto";
 import { UserRole } from "../generated/prisma/client";
 import { CustomerFileService } from "./customer-file.service";
 import { CustomersService } from "./customers.service";
-import type {
+import {
   AssignCollectionOfficerDto,
   BlacklistCustomerDto,
   CreateCustomerDto,
@@ -48,7 +48,10 @@ export class CustomersController {
     UserRole.BRANCH_MANAGER,
     UserRole.LOAN_OFFICER,
   )
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreateCustomerDto) {
+  create(
+    @CurrentUser() user: AuthUser,
+    @BodyDto(CreateCustomerDto) dto: CreateCustomerDto,
+  ) {
     return this.customers.create(user, dto);
   }
 
@@ -88,7 +91,7 @@ export class CustomersController {
   update(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: UpdateCustomerDto,
+    @BodyDto(UpdateCustomerDto) dto: UpdateCustomerDto,
   ) {
     return this.customers.update(user, id, dto);
   }
@@ -102,7 +105,7 @@ export class CustomersController {
   assignCollectionOfficer(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: AssignCollectionOfficerDto,
+    @BodyDto(AssignCollectionOfficerDto) dto: AssignCollectionOfficerDto,
   ) {
     return this.customers.assignCollectionOfficer(user, id, dto);
   }
@@ -112,7 +115,7 @@ export class CustomersController {
   blacklist(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() dto: BlacklistCustomerDto,
+    @BodyDto(BlacklistCustomerDto) dto: BlacklistCustomerDto,
   ) {
     return this.customers.blacklist(user, id, dto);
   }

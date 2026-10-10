@@ -30,6 +30,7 @@ function mockMobileViewport(isMobile: boolean) {
 describe("Overlay", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    mockMobileViewport(false);
   });
 
   it("renders modal content by default", () => {
@@ -76,12 +77,46 @@ describe("Overlay", () => {
 
   it("renders a standalone drawer with controlled open state", () => {
     render(
-      <Overlay type="drawer" defaultOpen isDismissable>
+      <Overlay
+        type="drawer"
+        defaultOpen
+        isDismissable
+        isKeyboardDismissDisabled
+      >
         <div>Standalone drawer</div>
       </Overlay>,
     );
 
     expect(screen.getByText("Standalone drawer")).toBeInTheDocument();
+    expect(document.querySelector("[data-drawer='']")).toBeInTheDocument();
+  });
+
+  it("renders a standalone popover outside a dialog", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    expect(() =>
+      render(
+        <Overlay type="popover">
+          <div>Standalone popover</div>
+        </Overlay>,
+      ),
+    ).toThrow(/PopoverContext/);
+
+    consoleError.mockRestore();
+  });
+
+  it("forwards isOpen and onOpenChange on a standalone drawer", () => {
+    const onOpenChange = vi.fn();
+
+    render(
+      <Overlay type="drawer" isOpen onOpenChange={onOpenChange}>
+        <div>Controlled drawer</div>
+      </Overlay>,
+    );
+
+    expect(screen.getByText("Controlled drawer")).toBeInTheDocument();
     expect(document.querySelector("[data-drawer='']")).toBeInTheDocument();
   });
 
