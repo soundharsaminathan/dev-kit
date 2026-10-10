@@ -17,7 +17,7 @@ name: loan-mate Deploy
 
 on:
   push:
-    branches: [main, loan-mate]
+    branches: [loan-mate]
     paths:
       - "apps/loan-mate/**"
       - "apps/loan-mate-api/**"
@@ -29,7 +29,7 @@ on:
       - ".github/workflows/loan-mate-deploy.yml"
   pull_request:
     types: [closed]
-    branches: [main, loan-mate]
+    branches: [loan-mate]
     paths:
       - "apps/loan-mate/**"
       - "apps/loan-mate-api/**"
@@ -52,7 +52,16 @@ jobs:
   prepare:
     name: Resolve deploy target
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    # Only the loan-mate branch deploys. Skip closed-but-unmerged PRs.
+    if: >-
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'loan-mate'
+      ) || (
+        github.event_name != 'pull_request' &&
+        github.ref_name == 'loan-mate'
+      )
     outputs:
       target: ${{ steps.meta.outputs.target }}
       sha: ${{ steps.meta.outputs.sha }}
@@ -75,7 +84,7 @@ jobs:
           {
             echo "target=$TARGET"
             echo "sha=$SHA"
-            if [ "$TARGET" = "main" ] || [ "$TARGET" = "loan-mate" ]; then
+            if [ "$TARGET" = "loan-mate" ]; then
               echo "should_deploy=true"
             else
               echo "should_deploy=false"

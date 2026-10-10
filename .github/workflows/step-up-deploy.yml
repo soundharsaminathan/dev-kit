@@ -2,7 +2,7 @@ name: classa Deploy
 
 on:
   push:
-    branches: [main, step-up]
+    branches: [step-up]
     paths:
       - "apps/step-up/**"
       - "apps/step-up-api/**"
@@ -13,11 +13,11 @@ on:
       - "packages/icons/**"
       - "packages/icons-packs/**"
       - ".github/workflows/step-up-deploy.yml"
-  # Also deploy when a PR into main/step-up is merged (covers missed push
+  # Also deploy when a PR into step-up is merged (covers missed push
   # events during Actions outages / racey merges).
   pull_request:
     types: [closed]
-    branches: [main, step-up]
+    branches: [step-up]
     paths:
       - "apps/step-up/**"
       - "apps/step-up-api/**"
@@ -43,8 +43,16 @@ jobs:
   prepare:
     name: Resolve deploy target
     runs-on: ubuntu-latest
-    # Skip closed-but-unmerged PRs (rejected / closed without merge).
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    # Only the step-up branch deploys. Skip closed-but-unmerged PRs.
+    if: >-
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'step-up'
+      ) || (
+        github.event_name != 'pull_request' &&
+        github.ref_name == 'step-up'
+      )
     outputs:
       target: ${{ steps.meta.outputs.target }}
       sha: ${{ steps.meta.outputs.sha }}
@@ -68,7 +76,7 @@ jobs:
           {
             echo "target=$TARGET"
             echo "sha=$SHA"
-            if [ "$TARGET" = "main" ] || [ "$TARGET" = "step-up" ]; then
+            if [ "$TARGET" = "step-up" ]; then
               echo "should_deploy=true"
             else
               echo "should_deploy=false"
