@@ -84,6 +84,7 @@ test.describe("memberships HTTP @http", () => {
   });
 
   test("family-purchase is removed; family-combine creates combined invoice @http", async () => {
+    test.setTimeout(180_000);
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
     try {

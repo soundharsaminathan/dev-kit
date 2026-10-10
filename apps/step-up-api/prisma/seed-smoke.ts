@@ -1,6 +1,8 @@
 import { testEmail } from "../src/test/test-email";
 import "dotenv/config";
 import { ConfigService } from "@nestjs/config";
+import { SAMPLE_CERTIFICATE_LAYOUT } from "../src/certificates/certificate-layout";
+import { ChatCryptoService } from "../src/chat/chat-crypto.service";
 import {
   AttendanceSource,
   AttendanceStatus,
@@ -24,8 +26,6 @@ import {
   SubscriptionKind,
   UserRole,
 } from "../src/generated/prisma/client";
-import { SAMPLE_CERTIFICATE_LAYOUT } from "../src/certificates/certificate-layout";
-import { ChatCryptoService } from "../src/chat/chat-crypto.service";
 import { UserCryptoService } from "../src/users/user-crypto.service";
 import { createScriptPrismaClient, withDbRetry } from "./script-db";
 import {
@@ -583,6 +583,7 @@ async function main() {
       update: {
         name: data.name,
         category: data.category,
+        classAudience: data.category === "KIDS" ? "KIDS" : "ADULTS",
         branchId: data.branchId,
         danceCategories: [
           { name: "Hip-hop", description: "Smoke fixture class" },
@@ -600,6 +601,7 @@ async function main() {
         branchId: data.branchId,
         name: data.name,
         category: data.category,
+        classAudience: data.category === "KIDS" ? "KIDS" : "ADULTS",
         danceCategories: [
           { name: "Hip-hop", description: "Smoke fixture class" },
         ],

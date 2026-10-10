@@ -126,7 +126,7 @@ export async function createLinkedFamilyKid(
   cleanup: TestDataCleanup,
   name: string,
 ) {
-  const student = await createHttpStudent(cleanup, name, {
+  const student = await createHttpStudent(name, cleanup, {
     ageRange: "UNDER_10",
   });
   await expectOk("STAFF", `/users/studio/${SEED.studioId}/families/link`, {

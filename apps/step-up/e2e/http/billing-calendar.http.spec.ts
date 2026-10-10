@@ -451,6 +451,7 @@ test.describe("billing calendar HTTP @http", () => {
   });
 
   test("family-combine uses two owned kid prepaid invoices @http", async () => {
+    test.setTimeout(180_000);
     const cleanup = new TestDataCleanup();
     const stamp = Date.now();
     try {

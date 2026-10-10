@@ -6,6 +6,25 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { BillingService } from "../billing/billing.service";
+import {
+  loadPaidMonthsByStudent,
+  parseCombineMeta,
+  readPurchaseMetaBatchId,
+  readPurchaseMetaSubscriptionId,
+} from "../billing/family-combine";
+import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
+import { ChatService } from "../chat/chat.service";
+import {
+  canonicalizeDanceCategories,
+  styleIdentityKey,
+} from "../common/dance-style-name";
+import { ImportLockService } from "../data-import/import-lock.service";
+import { primaryStyleName } from "../discover/discover.categories";
+import {
+  childAudienceBlocked,
+  classAudienceFromBatchCategory,
+} from "../discover/marketplace.contract";
 import {
   type AgeRange,
   BatchCategory,
@@ -22,22 +41,6 @@ import {
   SubscriptionKind,
   UserRole,
 } from "../generated/prisma/client";
-import { childAudienceBlocked } from "../discover/marketplace.contract";
-import { BillingService } from "../billing/billing.service";
-import {
-  loadPaidMonthsByStudent,
-  parseCombineMeta,
-  readPurchaseMetaBatchId,
-  readPurchaseMetaSubscriptionId,
-} from "../billing/family-combine";
-import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
-import { ChatService } from "../chat/chat.service";
-import {
-  canonicalizeDanceCategories,
-  styleIdentityKey,
-} from "../common/dance-style-name";
-import { ImportLockService } from "../data-import/import-lock.service";
-import { primaryStyleName } from "../discover/discover.categories";
 import { MediaService } from "../media/media.service";
 import {
   batchCategoryForAgeRange,
@@ -259,6 +262,18 @@ function audienceForBatchCategory(category: BatchCategory): IndividualAudience {
   return category === BatchCategory.KIDS
     ? IndividualAudience.KID
     : IndividualAudience.ADULT;
+}
+
+/** Kids batches stay kids-only even when classAudience was left at the ADULTS default. */
+function enrollClassAudience(batch: {
+  category: BatchCategory;
+  classAudience?: "KIDS" | "ADULTS" | "BOTH" | null;
+}) {
+  if (batch.classAudience === "BOTH") return batch.classAudience;
+  if (batch.category === BatchCategory.KIDS) {
+    return classAudienceFromBatchCategory("KIDS");
+  }
+  return batch.classAudience ?? null;
 }
 
 function dateTimeFor(date: Date, time: string, utcOffsetMinutes: number): Date {
@@ -1067,6 +1082,9 @@ export class BatchesService {
         branchId: data.branchId,
         name: data.name.trim(),
         category: data.category,
+        classAudience: classAudienceFromBatchCategory(
+          data.category === BatchCategory.KIDS ? "KIDS" : "ADULTS",
+        ),
         danceCategories: canonicalizeDanceCategories(data.danceCategories),
         scheduleJson: data.scheduleJson,
         capacity: data.capacity,
@@ -1556,7 +1574,7 @@ export class BatchesService {
     const forChild = await this.isMarketplaceChild(studentId);
     const blocked = childAudienceBlocked({
       forChild,
-      classAudience: batch.classAudience,
+      classAudience: enrollClassAudience(batch),
     });
     if (blocked) {
       throw new BadRequestException(blocked);
@@ -1611,7 +1629,7 @@ export class BatchesService {
   }
 
   private async isMarketplaceChild(studentId: string) {
-    const [family, parent] = await Promise.all([
+    const [family, parent, student] = await Promise.all([
       this.prisma.familyMember.findFirst({
         where: { memberUserId: studentId },
         select: { kind: true },
@@ -1620,8 +1638,13 @@ export class BatchesService {
         where: { childUserId: studentId },
         select: { id: true },
       }),
+      this.prisma.user.findUnique({
+        where: { id: studentId },
+        select: { ageRange: true },
+      }),
     ]);
-    return Boolean(parent) || family?.kind === FamilyMemberKind.KID;
+    if (parent || family?.kind === FamilyMemberKind.KID) return true;
+    return batchCategoryForAgeRange(student?.ageRange) === BatchCategory.KIDS;
   }
 
   async enrollBulk(

@@ -595,6 +595,7 @@ async function main() {
       update: {
         name: data.name,
         category: data.category,
+        classAudience: data.category === "KIDS" ? "KIDS" : "ADULTS",
         branchId: data.branchId,
         danceCategories: [
           { name: "Hip-hop", description: "E2E fixture class" },
@@ -612,6 +613,7 @@ async function main() {
         branchId: data.branchId,
         name: data.name,
         category: data.category,
+        classAudience: data.category === "KIDS" ? "KIDS" : "ADULTS",
         danceCategories: [
           { name: "Hip-hop", description: "E2E fixture class" },
         ],

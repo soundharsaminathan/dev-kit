@@ -7,13 +7,13 @@ import {
   Patch,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "../generated/prisma/client";
 import { IsBoolean } from "class-validator";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
+import { UserRole } from "../generated/prisma/client";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { StudioFeaturesService } from "./studio-features.service";
 
@@ -44,16 +44,12 @@ export class StudioFeaturesController {
   }
 
   @Patch(":key")
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.OWNER)
+  @Roles(UserRole.SYSTEM_ADMIN)
   update(
     @Param("studioId") studioId: string,
     @Param("key") key: string,
     @Body() dto: UpdateStudioFeatureDto,
-    @CurrentUser() user: DecryptedUser,
   ) {
-    if (user.role !== UserRole.SYSTEM_ADMIN) {
-      assertSameStudio(user, studioId);
-    }
     return this.studioFeatures.setEnabled(studioId, key, dto.enabled);
   }
 }
