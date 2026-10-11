@@ -139,10 +139,20 @@ img {
   padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* Sticky action bar covers the bottom of the scrollport. scroll-margin lets
+   focus and scrollIntoView park controls above that bar instead of under it. */
+.screen-padded-cta :is(input, textarea, button, [data-select-trigger]) {
+  scroll-margin-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+}
+
 @media (min-width: 768px) {
   .screen-padded-cta {
     /* Sticky action bar overlays the bottom of the scrollport. */
     padding-bottom: 9rem;
+  }
+
+  .screen-padded-cta :is(input, textarea, button, [data-select-trigger]) {
+    scroll-margin-bottom: 11rem;
   }
 }
 

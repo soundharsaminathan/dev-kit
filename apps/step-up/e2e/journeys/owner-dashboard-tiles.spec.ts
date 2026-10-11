@@ -1,4 +1,10 @@
-import { authFile, expect, test, waitForAppReady } from "../fixtures";
+import {
+  apiRequest,
+  authFile,
+  expect,
+  test,
+  waitForAppReady,
+} from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
 const FUNNEL_TILES = [
@@ -7,6 +13,26 @@ const FUNNEL_TILES = [
   "trialAttended",
   "leftBatch",
 ] as const;
+
+type FunnelCounts = Record<(typeof FUNNEL_TILES)[number], number>;
+
+async function funnelCountsMatch(
+  page: import("@playwright/test").Page,
+  period: string,
+) {
+  const api = await apiRequest<FunnelCounts>(
+    "OWNER",
+    `/users/studio/${SEED.users.OWNER.studioId}/student-funnel?period=${period}`,
+  );
+  for (const key of FUNNEL_TILES) {
+    const text = await page
+      .getByTestId(`funnel-tile-${key}`)
+      .locator("strong")
+      .textContent();
+    if (text !== String(api[key])) return false;
+  }
+  return true;
+}
 
 test.describe("owner dashboard tiles @critical", () => {
   test("owner home shows name and all tile counts update by period @critical", async ({
@@ -49,29 +75,27 @@ test.describe("owner dashboard tiles @critical", () => {
     const funnel = page.getByTestId("funnel-tiles");
     await expect(funnel).toBeVisible();
 
-    const lifetimeCounts: Record<string, string> = {};
-    for (const key of FUNNEL_TILES) {
-      const tile = page.getByTestId(`funnel-tile-${key}`);
-      await expect(tile).toBeVisible();
-      const value = tile.locator("strong");
-      await expect(value).toHaveText(/^\d+$/);
-      lifetimeCounts[key] = (await value.textContent()) ?? "";
-    }
-
-    await page.getByRole("button", { name: /^this month$/i }).click();
-    await expect(funnel).toBeVisible();
-
     for (const key of FUNNEL_TILES) {
       const tile = page.getByTestId(`funnel-tile-${key}`);
       await expect(tile).toBeVisible();
       await expect(tile.locator("strong")).toHaveText(/^\d+$/);
     }
+    // Compare to the live API. A snapshot taken earlier races with other
+    // workers that create students while this test switches period.
+    await expect.poll(() => funnelCountsMatch(page, "lifetime")).toBe(true);
+
+    await page.getByRole("button", { name: /^this month$/i }).click();
+    await expect(
+      page.getByRole("button", { name: /^this month$/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(funnel).toBeVisible();
+    await expect.poll(() => funnelCountsMatch(page, "this_month")).toBe(true);
 
     await page.getByRole("button", { name: /^lifetime$/i }).click();
-    for (const key of FUNNEL_TILES) {
-      const tile = page.getByTestId(`funnel-tile-${key}`);
-      await expect(tile.locator("strong")).toHaveText(lifetimeCounts[key]!);
-    }
+    await expect(
+      page.getByRole("button", { name: /^lifetime$/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect.poll(() => funnelCountsMatch(page, "lifetime")).toBe(true);
 
     await context.close();
   });

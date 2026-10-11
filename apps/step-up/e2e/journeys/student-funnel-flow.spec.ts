@@ -399,8 +399,17 @@ test.describe("student funnel full flow @critical", () => {
       await expect(styleChip).toBeVisible({ timeout: 30_000 });
       await styleChip.click();
 
-      await page.getByTestId("optional-batch-select").click();
-      await page.getByRole("option", { name: batch.name }).click();
+      const batchSelect = page.getByTestId("optional-batch-select");
+      // The sticky create bar covers the bottom of the scrollport. Park the
+      // trigger above it so the click lands on the select, not the bar.
+      await batchSelect.evaluate((el) => {
+        const bar = document.querySelector("[data-sticky-cta]");
+        const reserve = bar ? bar.getBoundingClientRect().height + 32 : 176;
+        el.style.scrollMarginBottom = `${reserve}px`;
+        el.scrollIntoView({ block: "center", inline: "nearest" });
+      });
+      await batchSelect.click();
+      await page.getByRole("option", { name: batch.name, exact: true }).click();
 
       await expect(
         page.getByRole("button", { name: /create student/i }),
