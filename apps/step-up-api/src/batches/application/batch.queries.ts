@@ -1,4 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { loadPaidMonthsByStudent } from "../../billing/family-combine";
+import { styleIdentityKey } from "../../common/dance-style-name";
+import { primaryStyleName } from "../../discover/discover.categories";
 import {
   BatchEnrollmentStatus,
   type BillingCadence,
@@ -8,9 +11,6 @@ import {
   SessionType,
   type SubscriptionKind,
 } from "../../generated/prisma/client";
-import { loadPaidMonthsByStudent } from "../../billing/family-combine";
-import { styleIdentityKey } from "../../common/dance-style-name";
-import { primaryStyleName } from "../../discover/discover.categories";
 import { MediaService } from "../../media/media.service";
 import { MembershipsService } from "../../memberships/memberships.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -158,6 +158,17 @@ export class BatchQueriesService {
     @Inject(MembershipsService)
     private readonly memberships: MembershipsService,
   ) {}
+
+  async countActive(studioId: string, trainerId?: string) {
+    const count = await this.prisma.batch.count({
+      where: {
+        studioId,
+        active: true,
+        ...(trainerId ? { trainers: { some: { trainerId } } } : {}),
+      },
+    });
+    return { count };
+  }
 
   async listByStudio(
     studioId: string,

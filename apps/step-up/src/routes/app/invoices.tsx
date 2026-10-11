@@ -315,6 +315,9 @@ function InvoicesPage() {
   );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
+  const [familyOpenInvoice, setFamilyOpenInvoice] = useState<Invoice | null>(
+    null,
+  );
   const [payFamily, setPayFamily] = useState<StudioFamily | null>(null);
   const [payPreselectedIds, setPayPreselectedIds] = useState<string[]>([]);
   const [refundId, setRefundId] = useState<string | null>(null);
@@ -405,7 +408,7 @@ function InvoicesPage() {
     null;
   const familyInvoice =
     (invoicesQuery.data ?? []).find((invoice) => invoice.id === familyOpenId) ??
-    null;
+    (familyOpenInvoice?.id === familyOpenId ? familyOpenInvoice : null);
   const refundInvoice =
     (invoicesQuery.data ?? []).find((invoice) => invoice.id === refundId) ??
     null;
@@ -754,7 +757,10 @@ function InvoicesPage() {
       <CollectPaymentSheet
         invoice={familyInvoice}
         onOpenChange={(open) => {
-          if (!open) setFamilyOpenId(null);
+          if (!open) {
+            setFamilyOpenId(null);
+            setFamilyOpenInvoice(null);
+          }
         }}
         confirmTestId="confirm-open-family-paid"
         discountTestIdPrefix="family-"
@@ -781,6 +787,7 @@ function InvoicesPage() {
           }
         }}
         onCombined={(invoice) => {
+          setFamilyOpenInvoice(invoice);
           setFamilyOpenId(invoice.id);
         }}
         onPaySingle={(invoice) => {

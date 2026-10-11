@@ -1,5 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { BatchEnrollmentStatus, type Prisma } from "../../generated/prisma/client";
+import {
+  BatchEnrollmentStatus,
+  type Prisma,
+} from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { resolvePageLimit } from "../../shared/pagination";
 import { userPiiSelect } from "../../users/user-crypto.service";
@@ -122,7 +125,9 @@ export class BatchQuery {
     const rows = await this.prisma.batch.findMany({
       where,
       select: discoverCardSelect,
-      orderBy: [{ name: "asc" }, { id: "asc" }],
+      orderBy: filters.recent
+        ? [{ id: "desc" }]
+        : [{ name: "asc" }, { id: "asc" }],
       ...(pagination.cursor
         ? { cursor: { id: pagination.cursor }, skip: 1 }
         : {}),

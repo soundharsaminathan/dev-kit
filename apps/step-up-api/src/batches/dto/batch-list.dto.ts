@@ -38,6 +38,11 @@ export class BatchListQueryDto extends PaginationQueryDto {
   activeOnly?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) => value === "true" || value === "1" || value === true)
+  @IsBoolean()
+  recent?: boolean;
+
+  @IsOptional()
   @IsString()
   studentId?: string;
 }
@@ -69,6 +74,7 @@ export function toDiscoverFilters(
     branchId: query.branchId,
     search: query.search,
     activeOnly: query.activeOnly === true,
+    recent: query.recent === true,
     studentId: query.studentId,
   };
 }

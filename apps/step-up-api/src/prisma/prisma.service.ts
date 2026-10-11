@@ -17,6 +17,8 @@ export class PrismaService
       transactionOptions: {
         // Remote DB / pooler RTT can exceed Prisma's 5s default during
         // seat locks + capacity checks inside enroll/booking transactions.
+        // maxWait is how long to wait to *start* a transaction (default 2s).
+        maxWait: 20_000,
         timeout: 20_000,
       },
     });

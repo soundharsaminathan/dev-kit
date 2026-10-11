@@ -377,12 +377,19 @@ test.describe("student funnel full flow @critical", () => {
       const name = `UI Enroll ${stamp}`;
       const email = testEmail(`funnel-ui-enroll-${stamp}`);
 
-      await page.getByLabel(/^name$/i).fill(name);
-      await page.getByLabel(/^email$/i).fill(email);
+      // Required marks are aria-hidden, so the accessible name is the label
+      // without the asterisk. Age is a spinbutton under the sticky action bar.
+      const nameField = page.getByRole("textbox", { name: /^name$/i });
+      const emailField = page.getByRole("textbox", { name: /^email$/i });
+      const ageField = page.getByRole("spinbutton", { name: /^age$/i });
+      await nameField.scrollIntoViewIfNeeded();
+      await nameField.fill(name);
+      await emailField.fill(email);
       await page.getByRole("button", { name: /^female$/i }).click();
-      await page.getByLabel(/^age$/i).fill("28");
-      await expect(page.getByLabel(/^name$/i)).toHaveValue(name);
-      await expect(page.getByLabel(/^email$/i)).toHaveValue(email);
+      await ageField.scrollIntoViewIfNeeded();
+      await ageField.fill("28");
+      await expect(nameField).toHaveValue(name);
+      await expect(emailField).toHaveValue(email);
       const continueBtn = page.getByRole("button", { name: /^continue$/i });
       await expect(continueBtn).toBeEnabled();
       await continueBtn.click();

@@ -141,7 +141,8 @@ img {
 
 @media (min-width: 768px) {
   .screen-padded-cta {
-    padding-bottom: var(--space-5, 1.25rem);
+    /* Sticky action bar overlays the bottom of the scrollport. */
+    padding-bottom: 9rem;
   }
 }
 

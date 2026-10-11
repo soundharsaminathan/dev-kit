@@ -1,10 +1,10 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { ACTIVE_ENROLLMENT_WHERE } from "../../batches/enrollment-status";
 import {
   BillingCadence,
   type InvoiceStatus,
   SubscriptionKind,
 } from "../../generated/prisma/client";
-import { ACTIVE_ENROLLMENT_WHERE } from "../../batches/enrollment-status";
 import { invoiceDueDate } from "../../memberships/membership-helpers";
 import { PrismaService } from "../../prisma/prisma.service";
 import { buildPage, type Page } from "../../shared/pagination";
@@ -38,6 +38,7 @@ export class BillingQueriesService {
       cursor?: string;
       limit?: number;
       status?: InvoiceStatus;
+      studentIds?: string;
     } = {},
   ): Promise<Page<Record<string, unknown>>> {
     const { rows, limit } = await this.query.findStudioInvoices(

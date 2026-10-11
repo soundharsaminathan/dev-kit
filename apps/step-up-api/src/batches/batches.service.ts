@@ -95,6 +95,7 @@ export type DiscoverBatchFilters = {
   search?: string;
   activeOnly?: boolean;
   studentId?: string;
+  recent?: boolean;
 };
 
 function minutesFromHhmm(value: string) {
