@@ -1,10 +1,5 @@
-import {
-  apiRequest,
-  authFile,
-  expect,
-  test,
-  waitForAppReady,
-} from "../fixtures";
+import type { Page, Response } from "@playwright/test";
+import { authFile, expect, test, waitForAppReady } from "../fixtures";
 import { SEED } from "../fixtures/seed";
 
 const FUNNEL_TILES = [
@@ -16,22 +11,24 @@ const FUNNEL_TILES = [
 
 type FunnelCounts = Record<(typeof FUNNEL_TILES)[number], number>;
 
-async function funnelCountsMatch(
-  page: import("@playwright/test").Page,
-  period: string,
-) {
-  const api = await apiRequest<FunnelCounts>(
-    "OWNER",
-    `/users/studio/${SEED.users.OWNER.studioId}/student-funnel?period=${period}`,
+function isFunnelResponse(response: Response, period: string) {
+  if (!response.ok() || response.request().method() !== "GET") return false;
+  const url = new URL(response.url());
+  return (
+    url.pathname.endsWith("/student-funnel") &&
+    url.searchParams.get("period") === period
   );
+}
+
+/** Assert tiles against the payload this page rendered.
+ * A fresh API read races other workers that create students while the
+ * dashboard query stays cached. */
+async function expectFunnelTiles(page: Page, counts: FunnelCounts) {
   for (const key of FUNNEL_TILES) {
-    const text = await page
-      .getByTestId(`funnel-tile-${key}`)
-      .locator("strong")
-      .textContent();
-    if (text !== String(api[key])) return false;
+    await expect(
+      page.getByTestId(`funnel-tile-${key}`).locator("strong"),
+    ).toHaveText(String(counts[key]));
   }
-  return true;
 }
 
 test.describe("owner dashboard tiles @critical", () => {
@@ -42,14 +39,19 @@ test.describe("owner dashboard tiles @critical", () => {
       storageState: authFile("OWNER"),
     });
     const page = await context.newPage();
+    const lifetimeResponse = page.waitForResponse((response) =>
+      isFunnelResponse(response, "lifetime"),
+    );
 
     await page.goto("/app", { waitUntil: "domcontentloaded" });
     await waitForAppReady(page);
     await expect(page).toHaveURL(/\/app\/?$/);
 
     const firstName = SEED.users.OWNER.name.split(" ")[0];
+    // "Studio" also appears in the account menu ("Studio Owner" / "Studio agent").
+    // Match the home subtitle so strict mode has a single element.
     await expect(
-      page.getByText(new RegExp(`${firstName}.*studio`, "i")),
+      page.getByText(new RegExp(`${firstName} — here's your studio`, "i")),
     ).toBeVisible();
 
     const metrics = page.getByTestId("owner-metric-tiles");
@@ -75,27 +77,27 @@ test.describe("owner dashboard tiles @critical", () => {
     const funnel = page.getByTestId("funnel-tiles");
     await expect(funnel).toBeVisible();
 
-    for (const key of FUNNEL_TILES) {
-      const tile = page.getByTestId(`funnel-tile-${key}`);
-      await expect(tile).toBeVisible();
-      await expect(tile.locator("strong")).toHaveText(/^\d+$/);
-    }
-    // Compare to the live API. A snapshot taken earlier races with other
-    // workers that create students while this test switches period.
-    await expect.poll(() => funnelCountsMatch(page, "lifetime")).toBe(true);
+    const lifetimeCounts = (await (
+      await lifetimeResponse
+    ).json()) as FunnelCounts;
+    await expectFunnelTiles(page, lifetimeCounts);
 
+    const monthResponse = page.waitForResponse((response) =>
+      isFunnelResponse(response, "this_month"),
+    );
     await page.getByRole("button", { name: /^this month$/i }).click();
     await expect(
       page.getByRole("button", { name: /^this month$/i }),
     ).toHaveAttribute("aria-pressed", "true");
     await expect(funnel).toBeVisible();
-    await expect.poll(() => funnelCountsMatch(page, "this_month")).toBe(true);
+    const monthCounts = (await (await monthResponse).json()) as FunnelCounts;
+    await expectFunnelTiles(page, monthCounts);
 
     await page.getByRole("button", { name: /^lifetime$/i }).click();
     await expect(
       page.getByRole("button", { name: /^lifetime$/i }),
     ).toHaveAttribute("aria-pressed", "true");
-    await expect.poll(() => funnelCountsMatch(page, "lifetime")).toBe(true);
+    await expectFunnelTiles(page, lifetimeCounts);
 
     await context.close();
   });
