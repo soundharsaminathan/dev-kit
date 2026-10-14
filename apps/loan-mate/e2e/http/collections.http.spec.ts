@@ -9,8 +9,8 @@ import {
   type LoanDetail,
   loanOutstanding,
   num,
-  patch,
   type Payment,
+  patch,
   post,
 } from "./helpers";
 
@@ -116,7 +116,7 @@ test.describe("collections @http", () => {
         mode: "CHEQUE",
       }),
     );
-    expect(errorMessage(cheque.data).toLowerCase()).toContain("mode");
+    expect(errorMessage(cheque.data).toLowerCase()).toContain("bank name");
 
     await expectOk<Payment>(
       "collector",
