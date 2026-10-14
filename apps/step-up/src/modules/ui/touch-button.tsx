@@ -28,7 +28,7 @@ type StickyCtaBarProps = {
 
 export function StickyCtaBar({ children, secondary }: StickyCtaBarProps) {
   return (
-    <div className={styles.bar}>
+    <div className={styles.bar} data-sticky-cta="">
       {secondary ? <div className={styles.secondary}>{secondary}</div> : null}
       <div className={styles.primary}>{children}</div>
     </div>

@@ -209,6 +209,26 @@ function AppDashboardPage() {
           };
     return schedule(() => setFunnelEnabled(true));
   }, [isTrainer]);
+  const batchCount = useQuery({
+    queryKey: [
+      "batches",
+      "home-count",
+      studioId,
+      isTrainer ? (user?.id ?? "trainer") : "studio",
+    ],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (isTrainer && user?.id) {
+        params.set("trainerId", user.id);
+      }
+      const qs = params.toString();
+      return api.get<{ count: number }>(
+        `/batches/studio/${studioId}/active-count${qs ? `?${qs}` : ""}`,
+      );
+    },
+    enabled: Boolean(studioId) && !isTrainer,
+    staleTime: 30_000,
+  });
   const batches = useQuery({
     queryKey: [
       "batches",
@@ -322,7 +342,7 @@ function AppDashboardPage() {
   });
 
   const currentBatches = batches.data ?? [];
-  const activeBatches = batches.data != null ? currentBatches.length : null;
+  const activeBatches = batchCount.data?.count ?? null;
   const studentCount =
     members.data?.filter((member) => member.role === "STUDENT").length ?? null;
   const trainerCount =
@@ -387,6 +407,7 @@ function AppDashboardPage() {
 
   const anyError =
     batches.isError ||
+    batchCount.isError ||
     subscriptions.isError ||
     members.isError ||
     bookings.isError ||
@@ -395,6 +416,7 @@ function AppDashboardPage() {
   async function refresh() {
     await Promise.all([
       batches.refetch(),
+      ...(!isTrainer ? [batchCount.refetch()] : []),
       subscriptions.refetch(),
       members.refetch(),
       bookings.refetch(),
@@ -469,7 +491,7 @@ function AppDashboardPage() {
                 label="Batches"
                 value={activeBatches}
                 hint="Active classes"
-                loading={batches.isLoading}
+                loading={batchCount.isLoading}
               />
               <MetricLink
                 to="/app/students"

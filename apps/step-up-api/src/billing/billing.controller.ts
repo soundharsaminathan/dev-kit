@@ -11,12 +11,6 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
-  BillingCadence,
-  InvoiceStatus,
-  PaymentMethod,
-  UserRole,
-} from "../generated/prisma/client";
-import {
   ArrayMinSize,
   IsArray,
   IsEnum,
@@ -30,6 +24,12 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
+import {
+  BillingCadence,
+  InvoiceStatus,
+  PaymentMethod,
+  UserRole,
+} from "../generated/prisma/client";
 import { PaginationQueryDto } from "../shared/pagination";
 import { FeatureGuard } from "../studio-features/feature.guard";
 import { RequireFeature } from "../studio-features/require-feature.decorator";
@@ -103,6 +103,11 @@ class BillingStudioListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(InvoiceStatus)
   status?: InvoiceStatus;
+
+  /** Comma-separated student ids. Limits the page to that household. */
+  @IsOptional()
+  @IsString()
+  studentIds?: string;
 }
 
 @Controller("billing")
@@ -128,6 +133,7 @@ export class BillingController {
       cursor: query?.cursor,
       limit: query?.limit,
       status: query?.status,
+      studentIds: query?.studentIds,
     });
   }
 

@@ -60,7 +60,8 @@ test.describe("studio features HTTP @http", () => {
       });
 
       await expectOk("OWNER", `/bookings/studio/${studioId}`);
-      await expectOk("OWNER", "/chat/conversations");
+      // Same chat feature gate, without decrypting stored messages.
+      await expectOk("OWNER", "/chat/contacts");
     } finally {
       await expectOk("SYSTEM_ADMIN", `/studios/${studioId}/features/bookings`, {
         method: "PATCH",

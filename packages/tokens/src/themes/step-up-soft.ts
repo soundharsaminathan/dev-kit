@@ -40,7 +40,7 @@ export const stepUpSoftTheme: ThemeDefinition = {
         category: "background",
       },
       "color-fg-on-primary": {
-        target: { value: "white" },
+        target: { onOf: "accent-500" },
         category: "foreground",
       },
     },

@@ -47,6 +47,8 @@ export function preloadSessionProviders() {
  * wrap it later: inserting providers remounts the route tree and wipes local
  * UI state (registration forms, booking success, attendance confirms).
  * Side-effect hosts still mount as a sibling so push/sockets can connect.
+ * The fragment around that sibling is part of the first paint — adding the
+ * host must not change the element type that parents the outlet.
  */
 export function SessionGate({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -72,22 +74,23 @@ export function SessionGate({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id);
   }, [user]);
 
-  if (user && !loaded) {
+  // Any paint without providers around the outlet must stay on this shape.
+  // Switching from `return children` to a fragment later changes the parent
+  // type and remounts the route tree (registration fields detach mid-test).
+  if (!(user && loaded)) {
     committedBare.current = true;
-    return children;
   }
 
-  if (user && loaded) {
-    if (committedBare.current) {
-      return (
-        <>
-          <loaded.SessionProviders>{null}</loaded.SessionProviders>
-          {children}
-        </>
-      );
-    }
+  if (user && loaded && !committedBare.current) {
     return <loaded.SessionProviders>{children}</loaded.SessionProviders>;
   }
 
-  return children;
+  return (
+    <>
+      {user && loaded ? (
+        <loaded.SessionProviders>{null}</loaded.SessionProviders>
+      ) : null}
+      {children}
+    </>
+  );
 }

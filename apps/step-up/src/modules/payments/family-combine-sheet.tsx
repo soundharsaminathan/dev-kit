@@ -1,11 +1,13 @@
 import { Checkbox } from "@dev-ui/components/checkbox";
 import { useToastContext } from "@dev-ui/components/toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
 import { useStudioId } from "@/lib/use-studio-id";
 import { AppSheet } from "@/modules/ui/app-sheet";
 import { FormInput } from "@/modules/ui/form-input";
+import { SkeletonBlock } from "@/modules/ui/skeleton-block";
 import staff from "@/modules/ui/staff.module.scss";
 import { EmptyState, ErrorState } from "@/modules/ui/states";
 import { TouchButton } from "@/modules/ui/touch-button";
@@ -70,17 +72,44 @@ export function FamilyCombineSheet({
     }
     return ids;
   }, [family]);
+  const memberIdList = useMemo(() => {
+    if (!family) return [];
+    // Members are oldest-first. Keep the owner and the newest links so a
+    // household that accumulated test kids still includes the ones just added.
+    const newestFirst = family.members.map((member) => member.id).reverse();
+    return [family.ownerId, ...newestFirst].slice(0, 200);
+  }, [family]);
+
+  // The studio invoice list is the whole history. A large studio has not
+  // finished loading when this sheet opens, so fetch this household directly.
+  const householdInvoices = useQuery({
+    queryKey: ["invoices", "household", studioId, memberIdList],
+    enabled: isOpen && memberIdList.length > 0,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: "50",
+        studentIds: memberIdList.join(","),
+      });
+      const data = await api.get<
+        | Invoice[]
+        | { items: Invoice[]; nextCursor: string | null; limit: number }
+      >(`/billing/studio/${studioId}?${params.toString()}`);
+      return unwrapPage(data);
+    },
+  });
+
+  const sourceInvoices = householdInvoices.data ?? invoices;
 
   const unpaid = useMemo(
     () =>
-      invoices.filter(
+      sourceInvoices.filter(
         (invoice) =>
           isUnpaid(invoice.status) &&
           invoice.kind !== "COMBINED" &&
           !invoice.combineMeta &&
           memberIds.has(invoice.studentId),
       ),
-    [invoices, memberIds],
+    [sourceInvoices, memberIds],
   );
 
   const selected = unpaid.filter((invoice) => selectedIds.includes(invoice.id));
@@ -206,7 +235,9 @@ export function FamilyCombineSheet({
             single invoice on its own.
           </p>
 
-          {unpaid.length === 0 ? (
+          {householdInvoices.isLoading && unpaid.length === 0 ? (
+            <SkeletonBlock height="6rem" radius="var(--radius-2xl)" />
+          ) : unpaid.length === 0 ? (
             <EmptyState
               title="No unpaid invoices"
               description="Household members need unpaid individual invoices before you can combine."

@@ -12,13 +12,6 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import {
-  BatchCategory,
-  EnrollmentMode,
-  MembershipSeatRole,
-  type Prisma,
-  UserRole,
-} from "../generated/prisma/client";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -44,6 +37,13 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { assertSameStudio } from "../auth/studio-access";
+import {
+  BatchCategory,
+  EnrollmentMode,
+  MembershipSeatRole,
+  type Prisma,
+  UserRole,
+} from "../generated/prisma/client";
 import type { DecryptedUser } from "../users/user-crypto.service";
 import { UsersService } from "../users/users.service";
 import { BatchCommandsService } from "./application/batch.commands";
@@ -357,6 +357,16 @@ export class BatchesController {
     private readonly batchCommands: BatchCommandsService,
     @Inject(UsersService) private readonly usersService: UsersService,
   ) {}
+
+  @Get("studio/:studioId/active-count")
+  activeCount(
+    @CurrentUser() user: DecryptedUser,
+    @Param("studioId") studioId: string,
+    @Query("trainerId") trainerId?: string,
+  ) {
+    assertSameStudio(user, studioId);
+    return this.batchQueries.countActive(studioId, trainerId);
+  }
 
   @Get("studio/:studioId")
   listByStudio(

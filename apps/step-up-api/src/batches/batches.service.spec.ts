@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
 } from "@nestjs/common";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BatchCategory,
   BillingCadence,
@@ -11,7 +12,6 @@ import {
   SubscriptionKind,
   UserRole,
 } from "../generated/prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createImportLockMock } from "../test/mocks/import-lock.mock";
 import { BatchesService } from "./batches.service";
 
@@ -168,6 +168,9 @@ describe("BatchesService branch validation", () => {
     expect(prisma.batch.create).toHaveBeenCalled();
     expect(prisma.batch.create.mock.calls[0]?.[0]?.data?.branchId).toBe(
       "branch-1",
+    );
+    expect(prisma.batch.create.mock.calls[0]?.[0]?.data?.classAudience).toBe(
+      "KIDS",
     );
     expect(prisma.batch.create.mock.calls[0]?.[0]?.data?.plans).toEqual({
       create: [
@@ -1121,6 +1124,7 @@ describe("BatchesService.remove and enroll", () => {
     },
     familyMember: { findUnique: vi.fn(), findFirst: vi.fn() },
     parentChild: { findUnique: vi.fn(), findFirst: vi.fn() },
+    user: { findUnique: vi.fn() },
     batchEnrollment: {
       upsert: vi.fn(),
       findMany: vi.fn(),
@@ -1187,6 +1191,7 @@ describe("BatchesService.remove and enroll", () => {
     prisma.booking.updateMany.mockResolvedValue({ count: 0 });
     prisma.familyMember.findFirst.mockResolvedValue(null);
     prisma.parentChild.findFirst.mockResolvedValue(null);
+    prisma.user.findUnique.mockResolvedValue({ ageRange: null });
   });
 
   it("deletes a batch and invalidates trial slots cache", async () => {
@@ -1345,6 +1350,69 @@ describe("BatchesService.remove and enroll", () => {
         "sub-1",
       ),
     ).rejects.toThrow(/this class is for kids/i);
+  });
+
+  it("blocks an adult on a kids batch whose classAudience is still the default", async () => {
+    prisma.user.findUnique.mockResolvedValue({ ageRange: "TWENTY_TO_FORTY" });
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      active: true,
+      capacity: 10,
+      category: "KIDS",
+      classAudience: "ADULTS",
+      enrollmentMode: EnrollmentMode.STAFF_ONLY,
+      enrollments: [],
+      studio: { settings: { bookingEnrollment: true } },
+    });
+
+    await expect(
+      service.enroll(
+        "batch-1",
+        "student-1",
+        {
+          id: "student-1",
+          role: UserRole.STUDENT,
+        } as never,
+        "sub-1",
+      ),
+    ).rejects.toThrow(/this class is for kids/i);
+  });
+
+  it("lets a young student join a kids batch", async () => {
+    prisma.user.findUnique.mockResolvedValue({ ageRange: "UNDER_10" });
+    prisma.batch.findUnique.mockResolvedValue({
+      id: "batch-1",
+      studioId: "studio-1",
+      active: true,
+      capacity: 10,
+      category: "KIDS",
+      classAudience: "ADULTS",
+      enrollmentMode: EnrollmentMode.STAFF_ONLY,
+      enrollments: [],
+      studio: { settings: { bookingEnrollment: true } },
+    });
+    memberships.beginBatchEnrollment.mockResolvedValue({
+      kind: "prepaid",
+      invoice: { id: "inv-1", amount: 2500, status: "PENDING" },
+    });
+    prisma.batchEnrollment.upsert.mockResolvedValue({
+      id: "enroll-1",
+      batchId: "batch-1",
+      studentId: "student-1",
+    });
+
+    await expect(
+      service.enroll(
+        "batch-1",
+        "student-1",
+        {
+          id: "staff-1",
+          role: UserRole.STAFF,
+        } as never,
+        "sub-1",
+      ),
+    ).resolves.toMatchObject({ studentId: "student-1" });
   });
 
   it("enrolls with a package and creates a pending invoice", async () => {

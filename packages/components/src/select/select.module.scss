@@ -16,6 +16,13 @@
   flex-shrink: 1;
   justify-content: flex-start;
   overflow: hidden;
+
+  // Muted placeholder text drops below 4.5:1 on the button hover and pressed fills.
+  &:is([data-hovered="true"], [data-pressed="true"]) {
+    .value[data-placeholder="true"] {
+      color: inherit;
+    }
+  }
 }
 
 .value {

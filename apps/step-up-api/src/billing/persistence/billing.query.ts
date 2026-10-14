@@ -99,12 +99,25 @@ export class BillingQuery {
 
   async findStudioInvoices(
     studioId: string,
-    pagination: { cursor?: string; limit?: number; status?: InvoiceStatus },
+    pagination: {
+      cursor?: string;
+      limit?: number;
+      status?: InvoiceStatus;
+      studentIds?: string;
+    },
   ) {
     const limit = resolvePageLimit(pagination.limit);
+    const studentIds = pagination.studentIds
+      ?.split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 200);
     const where: Prisma.InvoiceWhereInput = {
       studioId,
       ...(pagination.status ? { status: pagination.status } : {}),
+      ...(studentIds && studentIds.length > 0
+        ? { studentId: { in: studentIds } }
+        : {}),
     };
 
     const rows = await this.prisma.invoice.findMany({

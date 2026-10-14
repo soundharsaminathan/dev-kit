@@ -117,7 +117,7 @@ export function MemberRegistrationForm({
             nextCursor: string | null;
             limit: number;
           }
-      >(`/batches/studio/${studioId}?activeOnly=true`);
+      >(`/batches/studio/${studioId}?activeOnly=true&recent=true&limit=50`);
       return unwrapPage(data);
     },
     enabled: allowBatchEnrollment,
@@ -301,10 +301,19 @@ export function MemberRegistrationForm({
 
         {step === 0 ? (
           <div className={staff.softPanel}>
-            <FormInput label="Name" value={name} onChange={setName} required />
+            <FormInput
+              label="Name"
+              name="student-name"
+              autoComplete="off"
+              value={name}
+              onChange={setName}
+              required
+            />
             <FormInput
               label="Email"
+              name="student-email"
               type="email"
+              autoComplete="off"
               value={email}
               onChange={setEmail}
               required

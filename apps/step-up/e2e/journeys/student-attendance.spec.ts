@@ -29,8 +29,9 @@ test.describe("student attendance @critical", () => {
     await page.goto("/me/attendance");
     await waitForAppReady(page);
     await expect(page).toHaveURL(/\/me\/attendance/);
+    // Empty-state title "No attendance yet" is also a heading matching /attendance/i.
     await expect(
-      page.getByRole("heading", { name: /attendance/i }),
+      page.getByRole("heading", { name: "Attendance", exact: true }),
     ).toBeVisible();
 
     const row = page.locator("[data-testid^='attendance-row-']").first();

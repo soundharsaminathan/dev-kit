@@ -162,16 +162,26 @@ test.describe("admin payments @critical", () => {
       page.getByRole("heading", { name: /collect payment ·/i }),
     ).toBeVisible();
 
+    await expect(
+      page.getByTestId(`combine-invoice-${invoiceA.id}`),
+    ).toBeVisible();
     await page
       .getByTestId(`combine-invoice-${invoiceA.id}`)
       .getByRole("checkbox")
       .click();
-    await expect(page.getByTestId("confirm-family-combine")).toBeDisabled();
+    // One invoice selected: single-pay is allowed; combine still needs two people.
+    await expect(page.getByTestId("confirm-family-combine")).toBeEnabled();
+    await expect(page.getByTestId("confirm-family-combine")).toContainText(
+      /collect payment/i,
+    );
     await page
       .getByTestId(`combine-invoice-${invoiceB.id}`)
       .getByRole("checkbox")
       .click();
     await page.getByTestId("family-combine-discount").fill("100");
+    await expect(page.getByTestId("confirm-family-combine")).toContainText(
+      /combine/i,
+    );
 
     const [combineResponse] = await Promise.all([
       waitForApiResponse(page, {
@@ -183,6 +193,7 @@ test.describe("admin payments @critical", () => {
     expect(combineResponse.ok()).toBeTruthy();
     const combined = (await combineResponse.json()) as { id: string };
 
+    await expect(page.getByTestId("confirm-open-family-paid")).toBeVisible();
     await page.getByTestId("family-method-cash").click();
     const [paidResponse] = await Promise.all([
       waitForApiResponse(page, {

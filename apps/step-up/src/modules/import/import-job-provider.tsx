@@ -97,7 +97,8 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
 
   const activeJobQuery = useQuery({
     queryKey: ["import-job-active", studioId],
-    queryFn: () => api.get<ImportJobSnapshot | null>("/import/jobs/active"),
+    queryFn: async () =>
+      (await api.get<ImportJobSnapshot | null>("/import/jobs/active")) ?? null,
     refetchInterval: (query) => {
       const job = query.state.data;
       if (!job) {
@@ -205,7 +206,9 @@ export function ImportJobProvider({ children }: { children: ReactNode }) {
     setFileName(null);
     setKind("studio");
     writeStoredImport(null);
-    void queryClient.removeQueries({ queryKey: ["import-job-active", studioId] });
+    void queryClient.removeQueries({
+      queryKey: ["import-job-active", studioId],
+    });
   }, [queryClient, studioId]);
 
   useEffect(() => {
