@@ -10,6 +10,7 @@
       "**",
       "!**/dist",
       "!**/node_modules",
+      "!**/src/generated",
       "!**/storybook-static",
       "!**/routeTree.gen.ts",
       "!**/*.scss"
@@ -56,11 +57,24 @@
       "semicolons": "always",
       "trailingCommas": "all"
     },
-    "jsxRuntime": "reactClassic"
+    "jsxRuntime": "reactClassic",
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    }
   },
   "json": {
     "formatter": {
       "trailingCommas": "none"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/step-up-api/**"],
+      "linter": {
+        "domains": {
+          "react": "none"
+        }
+      }
+    }
+  ]
 }

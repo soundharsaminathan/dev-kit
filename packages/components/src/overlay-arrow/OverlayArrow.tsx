@@ -6,12 +6,12 @@ import type { OverlayArrowProps } from "./overlay-arrow.types";
 function getArrowStyle(
   placement: OverlayArrowProps["placement"],
 ): CSSProperties {
+  const isVertical = placement === "top" || placement === "bottom";
   const style: CSSProperties = {
     position: "absolute",
-    transform:
-      placement === "top" || placement === "bottom"
-        ? "translateX(-50%) rotate(45deg)"
-        : "translateY(-50%) rotate(45deg)",
+    transform: isVertical
+      ? "translateX(-50%) rotate(45deg)"
+      : "translateY(-50%) rotate(45deg)",
   };
 
   if (
@@ -21,6 +21,12 @@ function getArrowStyle(
     placement === "right"
   ) {
     style[placement] = "100%";
+  }
+
+  if (isVertical) {
+    style.left = "50%";
+  } else if (placement === "left" || placement === "right") {
+    style.top = "50%";
   }
 
   return style;

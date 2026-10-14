@@ -13,5 +13,6 @@ export type {
   DrawerPlacement,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSizing,
   DrawerSwipeAreaProps,
 } from "./drawer.types";

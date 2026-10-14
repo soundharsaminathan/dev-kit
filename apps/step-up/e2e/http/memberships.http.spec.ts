@@ -1,0 +1,220 @@
+import { expect, test } from "@playwright/test";
+import { SEED } from "../fixtures/seed";
+import { createCalendarBatch, enrollPrepaid } from "./billing-fixtures";
+import {
+  createLinkedFamilyKid,
+  expectOk,
+  expectStatus,
+  TestDataCleanup,
+} from "./helpers";
+
+test.describe("memberships HTTP @http", () => {
+  test("removed no-invoice shortcuts return 404 @http", async () => {
+    await expectStatus("STAFF", "/memberships/assign", 404, {
+      method: "POST",
+      body: JSON.stringify({
+        subscriptionId: SEED.adultPlanIds[0],
+        purchaserUserId: SEED.users.STUDENT.id,
+        coveredStudents: [
+          { studentId: SEED.users.STUDENT.id, seatRole: "ADULT" },
+        ],
+      }),
+    });
+    await expectStatus("STUDENT", "/memberships/self/assign", 404, {
+      method: "POST",
+      body: JSON.stringify({
+        subscriptionId: SEED.adultPlanIds[0],
+        purchaserUserId: SEED.users.STUDENT.id,
+        coveredStudents: [
+          { studentId: SEED.users.STUDENT.id, seatRole: "ADULT" },
+        ],
+      }),
+    });
+    await expectStatus("STAFF", "/memberships/renew", 404, {
+      method: "POST",
+      body: JSON.stringify({
+        membershipId: SEED.membershipStudentDueId,
+      }),
+    });
+  });
+
+  test("self/renew returns existing pending renewal invoice @http", async () => {
+    const invoice = await expectOk<{
+      id: string;
+      status: string;
+      membershipId: string;
+      amount: number;
+    }>("STUDENT", "/memberships/self/renew", {
+      method: "POST",
+      body: JSON.stringify({
+        membershipId: SEED.membershipStudentDueId,
+      }),
+    });
+
+    // Jobs may promote the open renewal invoice from PENDING → OVERDUE when the
+    // membership is already DUE/EXPIRED; both are valid unpaid renewal states.
+    expect(["PENDING", "OVERDUE"]).toContain(invoice.status);
+    expect(invoice.membershipId).toBe(SEED.membershipStudentDueId);
+    expect(Number(invoice.amount)).toBe(3500);
+    expect(invoice.id).toBe(SEED.invoiceRenewalPendingId);
+
+    const memberships = await expectOk<Array<{ id: string; status: string }>>(
+      "STUDENT",
+      `/memberships/student/${SEED.users.STUDENT.id}`,
+    );
+    const due = memberships.find((m) => m.id === SEED.membershipStudentDueId);
+    // Daily jobs may expire a DUE membership once periodStart is outside grace;
+    // renewal still works for both DUE and EXPIRED.
+    expect(["DUE", "EXPIRED"]).toContain(due?.status);
+  });
+
+  test("self/renew rejects ACTIVE memberships @http", async () => {
+    const result = await expectStatus(
+      "PARENT",
+      "/memberships/self/renew",
+      400,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          membershipId: SEED.membershipStudentId,
+        }),
+      },
+    );
+    expect(result.text).toMatch(/due or expired/i);
+  });
+
+  test("family-purchase is removed; family-combine creates combined invoice @http", async () => {
+    test.setTimeout(180_000);
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      await expectStatus("STAFF", "/memberships/family-purchase", 404, {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.studioId,
+          subscriptionId: SEED.adultPlanIds[0],
+          purchaserUserId: SEED.users.STUDENT.id,
+          coveredStudents: [],
+        }),
+      });
+
+      const kidsBatch = await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        category: "KIDS",
+        capacity: 8,
+      });
+
+      const depA = await createLinkedFamilyKid(
+        cleanup,
+        `HTTP Combine A ${stamp}`,
+      );
+      const depB = await createLinkedFamilyKid(
+        cleanup,
+        `HTTP Combine B ${stamp}`,
+      );
+
+      const invA = await enrollPrepaid(cleanup, {
+        category: "KIDS",
+        studentId: depA.id,
+        batchId: kidsBatch.id,
+        planId: SEED.kidPlanIds[0],
+      });
+      const invB = await enrollPrepaid(cleanup, {
+        category: "KIDS",
+        studentId: depB.id,
+        batchId: kidsBatch.id,
+        planId: SEED.kidPlanIds[0],
+      });
+
+      await expectStatus("STAFF", "/billing/family-combine", 400, {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.studioId,
+          purchaserUserId: SEED.users.STUDENT.id,
+          invoiceIds: [invA.invoice.id, invB.invoice.id],
+          familyDiscount:
+            Number(invA.invoice.amount) + Number(invB.invoice.amount) + 1,
+        }),
+      });
+
+      const combined = await expectOk<{
+        id: string;
+        status: string;
+        amount: number;
+        familyDiscount: number;
+        combineMeta: { sources: unknown[] } | null;
+        kind: string;
+      }>("STAFF", "/billing/family-combine", {
+        method: "POST",
+        body: JSON.stringify({
+          studioId: SEED.studioId,
+          purchaserUserId: SEED.users.STUDENT.id,
+          invoiceIds: [invA.invoice.id, invB.invoice.id],
+          familyDiscount: 100,
+        }),
+      });
+
+      expect(combined.status).toBe("PENDING");
+      expect(combined.kind).toBe("COMBINED");
+      expect(Number(combined.familyDiscount)).toBe(100);
+      expect(combined.combineMeta?.sources).toHaveLength(2);
+      expect(Number(combined.amount)).toBe(
+        Number(invA.invoice.amount) + Number(invB.invoice.amount) - 100,
+      );
+
+      await expectOk("STAFF", `/billing/${combined.id}/paid`, {
+        method: "PATCH",
+        body: JSON.stringify({ paymentMethod: "CASH" }),
+      });
+
+      const profileA = await expectOk<{
+        paidMonths: number;
+        invoices: Array<{ id: string }>;
+      }>("STAFF", `/users/studio/${SEED.studioId}/students/${depA.id}`);
+      const profileB = await expectOk<{
+        paidMonths: number;
+        invoices: Array<{ id: string }>;
+      }>("STAFF", `/users/studio/${SEED.studioId}/students/${depB.id}`);
+
+      // Combined invoice lives on the purchaser (family owner), not on deps.
+      expect(profileA.paidMonths).toBeGreaterThanOrEqual(1);
+      expect(profileB.paidMonths).toBeGreaterThanOrEqual(1);
+      expect(
+        profileB.invoices.some((invoice) => invoice.id === combined.id),
+      ).toBe(false);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("family-combine rejects one person's invoices @http", async () => {
+    const cleanup = new TestDataCleanup();
+    const stamp = Date.now();
+    try {
+      const first = await enrollPrepaid(cleanup, {
+        studentName: `HTTP Solo Combine ${stamp}`,
+      });
+      const second = await enrollPrepaid(cleanup, {
+        studentId: first.student.id,
+      });
+
+      const result = await expectStatus(
+        "STAFF",
+        "/billing/family-combine",
+        400,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studioId: SEED.studioId,
+            purchaserUserId: first.student.id,
+            invoiceIds: [first.invoice.id, second.invoice.id],
+            familyDiscount: 0,
+          }),
+        },
+      );
+      expect(result.text).toMatch(/more than one family member/i);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+});

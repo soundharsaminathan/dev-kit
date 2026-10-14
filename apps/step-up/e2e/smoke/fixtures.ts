@@ -1,0 +1,728 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { test as base, expect, type Page } from "@playwright/test";
+import { testEmail } from "../../src/lib/test-email";
+import {
+  batchCreateBody,
+  canJoinPostpaidNow,
+  isScheduleConflict,
+  markableSessionId,
+  scheduleJsonFor,
+} from "../fixtures/billing-calendar";
+import {
+  apiBaseUrl,
+  homePathForRole,
+  SMOKE,
+  type SmokeRole,
+  smokePassword,
+  webBaseUrl,
+} from "./smoke-seed";
+
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+const authDir = path.join(dirname, ".auth");
+
+const tokenCache = new Map<SmokeRole, { token: string; expiresAt: number }>();
+
+export function authFile(role: SmokeRole) {
+  return path.join(authDir, `${role.toLowerCase()}.json`);
+}
+
+export async function waitForAppReady(page: Page) {
+  const readyTimeout = 60_000;
+  await expect(
+    page.locator("#boot-splash, [data-boot-loader], #boot-public"),
+  ).toHaveCount(0, {
+    timeout: readyTimeout,
+  });
+  await expect
+    .poll(
+      async () => {
+        return (
+          (await page.getByRole("heading").count()) +
+          (await page.getByRole("button").count()) +
+          (await page.getByRole("link").count()) +
+          (await page.getByRole("textbox").count())
+        );
+      },
+      { timeout: readyTimeout },
+    )
+    .toBeGreaterThan(0);
+}
+
+export async function waitForApiReady(request: {
+  get: (url: string) => Promise<{ ok: () => boolean; status: () => number }>;
+}) {
+  const api = apiBaseUrl();
+  await expect
+    .poll(
+      async () => {
+        try {
+          const health = await request.get(`${api}/health`);
+          return health.ok() ? "ok" : `health:${health.status()}`;
+        } catch (error) {
+          return `error:${String(error).slice(0, 160)}`;
+        }
+      },
+      {
+        timeout: 180_000,
+        intervals: [1_000, 2_000, 5_000],
+        message: `API not ready at ${api}`,
+      },
+    )
+    .toBe("ok");
+}
+
+export async function waitForWebReady(request: {
+  get: (url: string) => Promise<{ ok: () => boolean }>;
+}) {
+  const web = webBaseUrl();
+  await expect
+    .poll(
+      async () => {
+        try {
+          const res = await request.get(web);
+          return res.ok() ? "ok" : "down";
+        } catch {
+          return "down";
+        }
+      },
+      {
+        timeout: 60_000,
+        intervals: [1_000, 2_000, 5_000],
+        message: `Web not ready at ${web}`,
+      },
+    )
+    .toBe("ok");
+}
+
+/**
+ * Canonical serialized search (`direct=true`). `direct=1` is rewritten by the
+ * router after hydrate, remounting the form and wiping Playwright's fill.
+ */
+export const SMOKE_LOGIN_PATH = "/login?direct=true";
+
+/** Wipe Firebase/local session leftovers so the next UI sign-in is clean. */
+export async function clearBrowserAuthState(page: Page) {
+  await page.evaluate(async () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      const databases = await indexedDB.databases?.();
+      if (databases) {
+        await Promise.all(
+          databases
+            .filter((db) => db.name)
+            .map(
+              (db) =>
+                new Promise<void>((resolve) => {
+                  const req = indexedDB.deleteDatabase(db.name!);
+                  req.onsuccess = () => resolve();
+                  req.onerror = () => resolve();
+                  req.onblocked = () => resolve();
+                }),
+            ),
+        );
+      }
+    } catch {
+      // Best-effort wipe.
+    }
+  });
+}
+
+async function openSmokeLogin(page: Page) {
+  await page.goto(SMOKE_LOGIN_PATH, { waitUntil: "domcontentloaded" });
+  await waitForAppReady(page);
+  await expect(page).toHaveURL(/[?&]direct=true\b/);
+  await expect(page.getByTestId("login-studio-select")).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: /^username/i })).toBeVisible();
+  await expect(page.locator('input[name="password"]')).toBeEnabled();
+}
+
+async function fillSmokeCredentials(
+  page: Page,
+  email: string,
+  password: string,
+) {
+  const identifier = page.getByRole("textbox", { name: /^username/i });
+  const secret = page.locator('input[name="password"]');
+  // Hydrate / search rewrite remounts the controlled form and can wipe fill().
+  await expect(async () => {
+    await identifier.click();
+    await identifier.fill(email);
+    await secret.click();
+    await secret.fill(password);
+    expect(await identifier.inputValue()).toBe(email);
+    expect(await secret.inputValue()).toBe(password);
+  }).toPass({ timeout: 20_000, intervals: [250, 500, 1_000] });
+}
+
+export async function signInSmokeRole(
+  page: Page,
+  role: SmokeRole,
+  options?: { clearSession?: boolean },
+) {
+  const user = SMOKE.users[role];
+  const home = homePathForRole(role);
+  const password = smokePassword();
+
+  await openSmokeLogin(page);
+
+  if (options?.clearSession) {
+    await clearBrowserAuthState(page);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    await expect(page).toHaveURL(/[?&]direct=true\b/);
+    await expect(page.getByTestId("login-studio-select")).toHaveCount(0);
+    await expect(page.locator('input[name="password"]')).toBeEnabled();
+  }
+
+  const submit = page
+    .getByRole("main")
+    .getByRole("button", { name: /^sign in$/i });
+  let firebaseCalled = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await fillSmokeCredentials(page, user.email, password);
+    const firebaseSignIn = page.waitForRequest(
+      (request) => request.url().includes("accounts:signInWithPassword"),
+      { timeout: 15_000 },
+    );
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    firebaseCalled = await firebaseSignIn.then(() => true).catch(() => false);
+    if (firebaseCalled) {
+      break;
+    }
+    if (attempt === 0) {
+      await openSmokeLogin(page);
+    }
+  }
+
+  try {
+    await expect(page).toHaveURL(new RegExp(home.replace("/", "\\/")), {
+      timeout: 60_000,
+    });
+  } catch (error) {
+    const alertText = (
+      (await page
+        .getByRole("alert")
+        .textContent({ timeout: 1_000 })
+        .catch(() => "")) ?? ""
+    )
+      .trim()
+      .replace(/\s+/g, " ");
+    const fieldText = (
+      (await page
+        .getByText(/enter your (email|username|password)/i)
+        .textContent({ timeout: 1_000 })
+        .catch(() => "")) ?? ""
+    )
+      .trim()
+      .replace(/\s+/g, " ");
+    const identifierValue = await page
+      .getByRole("textbox", { name: /^username/i })
+      .inputValue()
+      .catch(() => "");
+    const details = [
+      alertText,
+      fieldText,
+      firebaseCalled ? "firebase=called" : "firebase=not-called",
+      identifierValue ? `identifier=${identifierValue}` : "identifier=empty",
+    ]
+      .filter(Boolean)
+      .join("; ");
+    throw new Error(
+      `Login as ${role} failed at ${page.url()}${details ? `: ${details}` : `: ${String(error)}`}`,
+    );
+  }
+  await waitForAppReady(page);
+}
+
+/** Mint a Firebase ID token via Identity Toolkit REST (email/password). */
+export async function bearerFor(role: SmokeRole): Promise<string> {
+  const cached = tokenCache.get(role);
+  if (cached && cached.expiresAt > Date.now() + 60_000) {
+    return cached.token;
+  }
+
+  const apiKey =
+    process.env.STEP_UP_FIREBASE_API_KEY ?? process.env.VITE_FIREBASE_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "STEP_UP_FIREBASE_API_KEY (or VITE_FIREBASE_API_KEY) is required",
+    );
+  }
+
+  const user = SMOKE.users[role];
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: user.email,
+        password: smokePassword(),
+        returnSecureToken: true,
+      }),
+    },
+  );
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(
+      `Firebase sign-in failed for ${role}: ${response.status} ${text}`,
+    );
+  }
+  const data = JSON.parse(text) as {
+    idToken: string;
+    expiresIn?: string;
+  };
+  const expiresInMs = Number(data.expiresIn ?? "3600") * 1000;
+  tokenCache.set(role, {
+    token: data.idToken,
+    expiresAt: Date.now() + expiresInMs,
+  });
+  return data.idToken;
+}
+
+export async function apiRequest<T>(
+  role: SmokeRole,
+  pathName: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const token = await bearerFor(role);
+  const response = await fetch(`${apiBaseUrl()}${pathName}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(init.headers ?? {}),
+    },
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : undefined;
+  if (!response.ok) {
+    throw new Error(
+      `API ${init.method ?? "GET"} ${pathName} failed: ${response.status} ${text}`,
+    );
+  }
+  return data as T;
+}
+
+export function unwrapPage<T>(data: T[] | { items: T[] }): T[] {
+  return Array.isArray(data) ? data : data.items;
+}
+
+export async function gotoAuthed(
+  page: Page,
+  role: SmokeRole,
+  pathName?: string,
+) {
+  const target = pathName ?? homePathForRole(role);
+  try {
+    await page.goto(target, { waitUntil: "domcontentloaded" });
+  } catch (error) {
+    if (!String(error).includes("ERR_ABORTED")) {
+      throw error;
+    }
+  }
+  await waitForAppReady(page);
+  await expect(page).not.toHaveURL(/\/login/);
+}
+
+export async function waitForApiResponse(
+  page: Page,
+  match: {
+    method?: string;
+    pathIncludes: string;
+  },
+) {
+  return page.waitForResponse((response) => {
+    const url = response.url();
+    const method = response.request().method();
+    if (!url.includes(match.pathIncludes)) return false;
+    if (match.method && method !== match.method) return false;
+    return true;
+  });
+}
+
+export class SmokeDataCleanup {
+  private readonly students: string[] = [];
+  private readonly batches: string[] = [];
+  private readonly subscriptions: string[] = [];
+  private readonly certificates: string[] = [];
+  private readonly contests: string[] = [];
+
+  trackStudent(id: string) {
+    this.students.push(id);
+    return id;
+  }
+
+  trackBatch(id: string) {
+    this.batches.push(id);
+    return id;
+  }
+
+  trackSubscription(id: string) {
+    this.subscriptions.push(id);
+    return id;
+  }
+
+  trackCertificate(id: string) {
+    this.certificates.push(id);
+    return id;
+  }
+
+  trackContest(id: string) {
+    this.contests.push(id);
+    return id;
+  }
+
+  async dispose() {
+    const studioId = SMOKE.studioId;
+    for (const studentId of this.students.splice(0)) {
+      await apiRequest(
+        "OWNER",
+        `/users/studio/${studioId}/students/${studentId}`,
+        { method: "DELETE" },
+      ).catch(() => undefined);
+    }
+    for (const batchId of this.batches.splice(0)) {
+      await apiRequest("STAFF", `/batches/${batchId}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+    }
+    for (const subId of this.subscriptions.splice(0)) {
+      await apiRequest("STAFF", `/subscriptions/${subId}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+    }
+    for (const certId of this.certificates.splice(0)) {
+      await apiRequest("STAFF", `/certificate-templates/${certId}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+    }
+    for (const contestId of this.contests.splice(0)) {
+      await apiRequest("STAFF", `/contests/${contestId}`, {
+        method: "DELETE",
+      }).catch(() => undefined);
+    }
+  }
+}
+
+export async function closeSmokeContext(
+  context: { close: () => Promise<void> },
+  cleanup?: SmokeDataCleanup,
+) {
+  try {
+    await context.close();
+  } catch {
+    // Timed-out tests already tore the browser down.
+  }
+  await cleanup?.dispose();
+}
+
+export async function createCalendarBatch(
+  cleanup: SmokeDataCleanup,
+  options: {
+    kind: "prepaid" | "postpaid";
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    capacity?: number;
+  },
+) {
+  const category = options.category ?? "ADULTS";
+  if (options.kind === "postpaid" && !canJoinPostpaidNow()) {
+    throw new Error(
+      "UTC 1st is always prepaid-at-join; skip postpaid fixture cases",
+    );
+  }
+  const branches = [SMOKE.branchMainId, SMOKE.branchEastId];
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const stamp =
+      Date.now() + attempt * 97_000 + Math.floor(Math.random() * 1_000);
+    try {
+      const created = await apiRequest<{ id: string }>("STAFF", "/batches", {
+        method: "POST",
+        body: JSON.stringify(
+          batchCreateBody({
+            studioId: SMOKE.studioId,
+            branchId: branches[attempt % branches.length] ?? SMOKE.branchMainId,
+            trainerId: SMOKE.users.TRAINER.id,
+            name:
+              options.name ??
+              `${options.kind === "prepaid" ? "Prepaid" : "Postpaid"} ${category} ${stamp}`,
+            category,
+            scheduleJson: scheduleJsonFor(options.kind, stamp),
+            subscriptionIds:
+              category === "KIDS" ? SMOKE.kidPlanIds : SMOKE.adultPlanIds,
+            capacity: options.capacity,
+          }),
+        ),
+      });
+      cleanup.trackBatch(created.id);
+      return created;
+    } catch (error) {
+      lastError = error;
+      if (!isScheduleConflict(error)) {
+        throw error;
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Could not create ${options.kind} smoke calendar batch`);
+}
+
+export async function createFutureScheduleBatch(
+  cleanup: SmokeDataCleanup,
+  options: { category?: "ADULTS" | "KIDS" } = {},
+) {
+  return createCalendarBatch(cleanup, {
+    kind: "prepaid",
+    category: options.category,
+  });
+}
+
+function isSmokeSeedBatchId(batchId: string): boolean {
+  return (
+    batchId === SMOKE.kidsBatchId ||
+    batchId === SMOKE.beginnerBatchId ||
+    batchId === SMOKE.trialBatchId
+  );
+}
+
+export async function createLinkedFamilyKid(
+  cleanup: SmokeDataCleanup,
+  name: string,
+) {
+  const student = await apiRequest<{ id: string; name: string }>(
+    "OWNER",
+    "/users",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        email: testEmail(
+          `smoke-kid-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ),
+        gender: "FEMALE",
+        ageRange: "UNDER_10",
+        styles: ["Hip Hop"],
+      }),
+    },
+  );
+  cleanup.trackStudent(student.id);
+  await apiRequest("STAFF", `/users/studio/${SMOKE.studioId}/families/link`, {
+    method: "POST",
+    body: JSON.stringify({
+      anchorUserId: SMOKE.users.STUDENT.id,
+      memberUserIds: [student.id],
+    }),
+  });
+  return student;
+}
+
+export async function enrollPrepaid(
+  cleanup: SmokeDataCleanup,
+  options: {
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    ageRange?: string;
+    studentId?: string;
+    batchId?: string;
+    planId?: string;
+  } = {},
+) {
+  const category = options.category ?? "ADULTS";
+  const stamp = Date.now();
+  const student = options.studentId
+    ? { id: options.studentId, name: options.name ?? options.studentId }
+    : await apiRequest<{ id: string; name: string }>("OWNER", "/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name: options.name ?? `Smoke Pay ${stamp}`,
+          email: testEmail(`smoke-pay-${stamp}`),
+          gender: "FEMALE",
+          ageRange:
+            options.ageRange ??
+            (category === "KIDS" ? "UNDER_10" : "TWENTY_TO_FORTY"),
+          styles: ["Hip Hop"],
+        }),
+      });
+  if (!options.studentId) {
+    cleanup.trackStudent(student.id);
+  }
+  const ownedBatchId =
+    options.batchId && !isSmokeSeedBatchId(options.batchId)
+      ? options.batchId
+      : undefined;
+  const batch = ownedBatchId
+    ? { id: ownedBatchId }
+    : await createCalendarBatch(cleanup, {
+        kind: "prepaid",
+        category,
+      });
+  const planId =
+    options.planId ??
+    (category === "KIDS" ? SMOKE.kidMonthlyId : SMOKE.adultMonthlyId);
+  const enrollment = await apiRequest<{
+    invoice: { id: string; status: string; amount: number } | null;
+    billingKind?: string;
+  }>("STAFF", `/batches/${batch.id}/enroll`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: student.id,
+      subscriptionId: planId,
+    }),
+  });
+  expect(enrollment.invoice?.status).toBe("PENDING");
+  expect(enrollment.billingKind).toBe("prepaid");
+  return { student, invoice: enrollment.invoice!, batch, batchId: batch.id };
+}
+
+export async function enrollPostpaid(
+  cleanup: SmokeDataCleanup,
+  options: {
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    ageRange?: string;
+  } = {},
+) {
+  const category = options.category ?? "ADULTS";
+  const stamp = Date.now();
+  const student = await apiRequest<{ id: string; name: string }>(
+    "OWNER",
+    "/users",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: options.name ?? `Smoke Postpaid ${stamp}`,
+        email: testEmail(`smoke-postpaid-${stamp}`),
+        gender: "FEMALE",
+        ageRange:
+          options.ageRange ??
+          (category === "KIDS" ? "UNDER_10" : "TWENTY_TO_FORTY"),
+        styles: ["Hip Hop"],
+      }),
+    },
+  );
+  cleanup.trackStudent(student.id);
+  const batch = await createCalendarBatch(cleanup, {
+    kind: "postpaid",
+    category,
+  });
+  const planId =
+    category === "KIDS" ? SMOKE.kidMonthlyId : SMOKE.adultMonthlyId;
+  const enrollment = await apiRequest<{
+    invoice: { id: string } | null;
+    billingKind?: string;
+  }>("STAFF", `/batches/${batch.id}/enroll`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: student.id,
+      subscriptionId: planId,
+    }),
+  });
+  expect(enrollment.billingKind).toBe("postpaid");
+  if (enrollment.invoice) {
+    expect(enrollment.invoice.id).toBeTruthy();
+  }
+  const sessions = await listBatchSessions(batch.id);
+  return {
+    student,
+    batch,
+    batchId: batch.id,
+    invoice: enrollment.invoice,
+    sessions,
+    sessionId: await sessionIdInAttendanceWindow(batch.id, sessions),
+  };
+}
+
+export async function enrollUnpaidOnPostpaidBatch(
+  cleanup: SmokeDataCleanup,
+  options: {
+    category?: "ADULTS" | "KIDS";
+    name?: string;
+    ageRange?: string;
+  } = {},
+) {
+  const prepaid = await enrollPrepaid(cleanup, options);
+  const dest = await createCalendarBatch(cleanup, {
+    kind: "postpaid",
+    category: options.category ?? "ADULTS",
+  });
+  await apiRequest("STAFF", `/batches/${prepaid.batchId}/switch`, {
+    method: "POST",
+    body: JSON.stringify({
+      studentId: prepaid.student.id,
+      toBatchId: dest.id,
+    }),
+  });
+  const sessions = await listBatchSessions(dest.id);
+  return {
+    ...prepaid,
+    batch: dest,
+    batchId: dest.id,
+    sessions,
+    sessionId: await sessionIdInAttendanceWindow(dest.id, sessions),
+  };
+}
+
+async function listBatchSessions(batchId: string) {
+  const sessions = await apiRequest<Array<{ id: string; startsAt: string }>>(
+    "STAFF",
+    `/sessions/batch/${batchId}`,
+  );
+  return Array.isArray(sessions) ? sessions : [];
+}
+
+async function sessionIdInAttendanceWindow(
+  batchId: string,
+  sessions: Array<{ id: string; startsAt: string }>,
+) {
+  try {
+    return markableSessionId(sessions);
+  } catch {
+    const startsAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + 45 * 60 * 1000);
+    const created = await apiRequest<{ id: string }>("STAFF", "/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        batchId,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        type: "REGULAR",
+      }),
+    });
+    return created.id;
+  }
+}
+
+export { canJoinPostpaidNow };
+
+type Fixtures = {
+  asRole: (role: SmokeRole) => Promise<Page>;
+};
+
+export const test = base.extend<Fixtures>({
+  asRole: async ({ browser }, use) => {
+    await use(async (role) => {
+      const statePath = authFile(role);
+      if (!fs.existsSync(statePath)) {
+        throw new Error(
+          `Missing auth state for ${role}. Run smoke-setup first.`,
+        );
+      }
+      const context = await browser.newContext({
+        storageState: statePath,
+      });
+      const page = await context.newPage();
+      await gotoAuthed(page, role);
+      return page;
+    });
+  },
+});
+
+export type { SmokeRole };
+export { apiBaseUrl, expect, SMOKE };

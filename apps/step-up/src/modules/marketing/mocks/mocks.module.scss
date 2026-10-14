@@ -1,0 +1,1040 @@
+/* Miniature product UI for marketing shots. Layout switches at 768px to match the app shell. */
+
+.app {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-background, #f8f4ec);
+  color: var(--color-fg);
+  font-family: var(--font-sans, "Plus Jakarta Sans", system-ui, sans-serif);
+  font-size: 0.5625rem;
+  line-height: 1.3;
+}
+
+.sidebar {
+  display: none;
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  background: var(--surface-background, #f8f4ec);
+}
+
+.topBar {
+  display: none;
+}
+
+.screenHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem 0.5rem;
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+}
+
+.back {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0.35rem 0.45rem 0.35rem 0.35rem;
+    border-inline-start: 1.5px solid var(--color-primary);
+    border-block-start: 1.5px solid var(--color-primary);
+    transform: rotate(-45deg);
+  }
+}
+
+.titleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle {
+  margin: 0.1rem 0 0;
+  font-size: 0.5rem;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headAction {
+  flex-shrink: 0;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 0.75rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bottomBar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  flex-shrink: 0;
+  gap: 0.125rem;
+  padding: 0.25rem 0.35rem 0.35rem;
+  background: var(--color-card, #fff);
+  box-shadow: 0 -4px 12px rgb(28 24 18 / 8%);
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+.tab {
+  display: grid;
+  place-items: center;
+  min-height: 1.75rem;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+
+  &[data-active="true"] {
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+}
+
+.tabIcon {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex-shrink: 0;
+}
+
+.brandLogo {
+  display: block;
+  height: 1.05rem;
+  width: auto;
+  max-width: 100%;
+  flex-shrink: 0;
+  color: var(--color-fg);
+  overflow: visible;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sideNav,
+.sideLink,
+.sideIcon,
+.sidebarHead,
+.topBrand,
+.topAvatar {
+  display: none;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.metricsWide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.metricCard,
+.statTile,
+.listCard,
+.softPanel,
+.invoiceCard,
+.batchCard {
+  min-width: 0;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, #fff);
+}
+
+.metricCard,
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.5rem;
+}
+
+.metricLabel,
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.metricIcon {
+  display: grid;
+  place-items: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+
+  svg {
+    width: 0.55rem;
+    height: 0.55rem;
+  }
+}
+
+.metricValue,
+.statValue {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricHint {
+  margin: 0;
+  font-size: 0.4375rem;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.chips {
+  display: flex;
+  gap: 0.25rem;
+  overflow: hidden;
+}
+
+.pipelineTabs {
+  display: none;
+}
+
+.pipelineTab {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.25rem 0.1rem 0.35rem;
+  border-bottom: 1.5px solid transparent;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  font-size: 0.4375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+
+  &[data-on="true"] {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+  }
+}
+
+.swipeTabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0.2rem;
+  overflow: hidden;
+}
+
+.swipeTab {
+  flex: 0 0 auto;
+  padding: 0.22rem 0.45rem;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, #fff);
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  font-size: 0.5rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &[data-on="true"] {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 14%, var(--color-card, #fff));
+    color: var(--color-primary);
+  }
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.5rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &[data-on="true"] {
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    color: var(--color-primary);
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.5rem;
+}
+
+.rowTitle {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.rowMeta {
+  font-size: 0.5rem;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.search {
+  height: 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, #fff);
+  color: color-mix(in srgb, var(--color-fg) 38%, transparent);
+  font-size: 0.5rem;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--color-primary);
+  color: var(--color-fg-on-primary, #1c1a17);
+  font-weight: 700;
+  font-size: 0.5rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.btnQuiet {
+  background: color-mix(in srgb, var(--color-fg) 7%, transparent);
+  color: var(--color-fg);
+}
+
+.btnSm {
+  padding: 0.2rem 0.4rem;
+}
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, #fff);
+  overflow: hidden;
+}
+
+.rosterRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 6%, transparent);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.avatar {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  border-radius: 0.4rem;
+  display: grid;
+  place-items: center;
+  font-size: 0.4375rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-muted, #eee));
+  color: var(--color-primary);
+
+  &[data-lg="true"] {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.625rem;
+    border-radius: 0.5rem;
+  }
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.pills {
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 16%, transparent);
+  flex-shrink: 0;
+}
+
+.pill {
+  padding: 0.18rem 0.4rem;
+  font-size: 0.4375rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-fg) 45%, transparent);
+
+  &[data-on="true"] {
+    background: var(--color-primary);
+    color: var(--color-fg-on-primary, #1c1a17);
+  }
+
+  &[data-danger="true"][data-on="true"] {
+    background: var(--color-danger, #c23);
+    color: #fff;
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.4375rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  white-space: nowrap;
+
+  &[data-tone="ok"] {
+    background: color-mix(in srgb, var(--color-success, #2a8) 18%, transparent);
+    color: var(--color-success, #2a8);
+  }
+
+  &[data-tone="warn"] {
+    background: color-mix(in srgb, var(--color-warning, #c80) 18%, transparent);
+    color: var(--color-warning, #b70);
+  }
+
+  &[data-tone="bad"] {
+    background: color-mix(in srgb, var(--color-danger, #c23) 16%, transparent);
+    color: var(--color-danger, #c23);
+  }
+}
+
+.check {
+  width: 0.7rem;
+  height: 0.7rem;
+  flex-shrink: 0;
+  border-radius: 0.15rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 22%, transparent);
+
+  &[data-on="true"] {
+    border-color: transparent;
+    background: var(--color-primary);
+  }
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.5rem;
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.4375rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+    padding: 0.3rem 0.4rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  }
+
+  td {
+    padding: 0.35rem 0.4rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 6%, transparent);
+    vertical-align: middle;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.batchCard {
+  display: grid;
+  grid-template-columns: 4.25rem 1fr;
+  gap: 0.45rem;
+  padding: 0.4rem;
+}
+
+.batchMedia {
+  min-height: 3.5rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-bg));
+  display: grid;
+  place-items: center;
+  color: var(--color-primary);
+
+  svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+}
+
+.batchBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.batchCat {
+  margin: 0;
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.batchName {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.softPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.invoiceCard {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.leadCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, #fff);
+
+  &[data-soon="true"] {
+    border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--color-card, #fff));
+  }
+
+  &[data-on="true"] {
+    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  }
+}
+
+.followChip {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.12rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.4375rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-fg) 7%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.invoiceTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.amount {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.amountHint {
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 45%, transparent);
+}
+
+.week {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, #fff);
+}
+
+.weekHead,
+.weekBody {
+  display: grid;
+  grid-template-columns: 1.75rem repeat(7, minmax(0, 1fr));
+}
+
+.weekHead {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--color-card, #fff));
+}
+
+.dayHead {
+  padding: 0.25rem 0.1rem;
+  text-align: center;
+  font-size: 0.4375rem;
+  font-weight: 600;
+
+  &[data-today="true"] {
+    background: var(--color-primary);
+    color: var(--color-fg-on-primary, #1c1a17);
+  }
+}
+
+.gutter,
+.hour {
+  font-size: 0.375rem;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+  text-align: right;
+  padding: 0.15rem 0.2rem 0 0;
+}
+
+.weekBody {
+  flex: 1;
+  min-height: 0;
+}
+
+.hours {
+  display: grid;
+  grid-template-rows: repeat(5, 1fr);
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.days {
+  display: contents;
+}
+
+.dayCol {
+  position: relative;
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 6%, transparent);
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.slot {
+  height: 20%;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 5%, transparent);
+}
+
+.event {
+  position: absolute;
+  left: 0.1rem;
+  right: 0.1rem;
+  padding: 0.15rem 0.2rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  color: var(--color-fg);
+  font-size: 0.375rem;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.designer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, #fff);
+  overflow: hidden;
+}
+
+.toolGroup {
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.25rem 0.4rem;
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.tool {
+  width: 1.1rem;
+  height: 1rem;
+  border-radius: 0.2rem;
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+}
+
+.workspaceGrid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
+}
+
+.canvas {
+  min-height: 0;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 4%, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.cert {
+  width: 100%;
+  max-width: 11rem;
+  aspect-ratio: 11 / 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.5rem;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 40%, transparent);
+  border-radius: 0.35rem;
+  background: #fff;
+  text-align: center;
+}
+
+.certSeal {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-primary);
+  display: grid;
+  place-items: center;
+  font-size: 0.375rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.certTitle {
+  margin: 0;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.certSub {
+  margin: 0;
+  font-size: 0.4375rem;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+}
+
+.inspector {
+  display: none;
+}
+
+.certList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.onlyMobile {
+  min-width: 0;
+}
+
+.onlyDesktop {
+  display: none;
+  min-width: 0;
+}
+
+.fill {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.onlyMobile.fill {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .app {
+    font-size: 0.625rem;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 22%;
+    min-width: 7.25rem;
+    max-width: 10.5rem;
+    flex-shrink: 0;
+    background: var(--color-card, #fff);
+    border-inline-end: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  }
+
+  .app[data-hide-sidebar="true"] .sidebar {
+    display: none;
+  }
+
+  .sidebarHead {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.55rem 0.55rem 0.4rem;
+  }
+
+  .sideNav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.25rem 0.4rem;
+  }
+
+  .sideLink {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.45rem;
+    border-radius: 0.45rem;
+    color: color-mix(in srgb, var(--color-fg) 68%, transparent);
+    font-weight: 500;
+    font-size: 0.5625rem;
+
+    &[data-active="true"] {
+      background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+  }
+
+  .sideIcon {
+    display: block;
+    width: 0.75rem;
+    height: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .topBar {
+    display: none;
+  }
+
+  .topBrand {
+    display: block;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-size: 0.625rem;
+  }
+
+  .topAvatar {
+    display: grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+    color: var(--color-primary);
+    font-size: 0.5rem;
+    font-weight: 700;
+  }
+
+  .bottomBar {
+    display: none;
+  }
+
+  .screenHead {
+    padding: 0.45rem 0.85rem 0.35rem;
+  }
+
+  .title {
+    font-size: 0.875rem;
+  }
+
+  .subtitle {
+    font-size: 0.5625rem;
+  }
+
+  .body {
+    padding: 0 0.85rem 0.65rem;
+    gap: 0.55rem;
+  }
+
+  .metricsWide {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .onlyMobile,
+  .onlyMobile.fill {
+    display: none;
+  }
+
+  .onlyDesktop {
+    display: block;
+  }
+
+  .onlyDesktop.fill {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pipelineTabs {
+    display: flex;
+    width: 100%;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  }
+
+  .swipeTabs {
+    display: none;
+  }
+
+  .workspaceGrid {
+    grid-template-columns: minmax(0, 1fr) 6.5rem;
+  }
+
+  .inspector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.45rem;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+    background: var(--color-card, #fff);
+  }
+
+  .inspectLabel {
+    margin: 0;
+    font-size: 0.4375rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+  }
+
+  .inspectField {
+    height: 1.1rem;
+    border-radius: 0.3rem;
+    background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  }
+
+  .batchCard {
+    grid-template-columns: 5.5rem 1fr;
+  }
+
+  .weekHead,
+  .weekBody {
+    grid-template-columns: 2.25rem repeat(7, minmax(0, 1fr));
+  }
+
+  .event {
+    font-size: 0.4375rem;
+  }
+
+  .cert {
+    max-width: 14rem;
+  }
+
+  .batchesGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+  }
+}
+
+.batchesGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}

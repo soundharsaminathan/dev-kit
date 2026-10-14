@@ -2,7 +2,9 @@ import {
   type IconPackModule,
   IconProvider,
   type IconTheme,
+  type PackLoaderMap,
 } from "@dev-ui/icons";
+
 import {
   ACTIVE_THEME_STORAGE_KEY,
   type CustomTheme,
@@ -67,10 +69,10 @@ function getSystemPreference(): ThemeMode {
     : "light";
 }
 
-function readStoredTheme(): string {
+function readStoredTheme(): string | null {
   /* v8 ignore next 3 -- SSR guard */
-  if (typeof window === "undefined") return "default";
-  return localStorage.getItem(ACTIVE_THEME_STORAGE_KEY) || "default";
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(ACTIVE_THEME_STORAGE_KEY);
 }
 
 function readModePreference(defaultMode: ThemeMode | "system"): ModePreference {
@@ -129,6 +131,7 @@ export interface ThemeProviderProps {
   storageKeyPrefix?: string;
   icons?: IconTheme | undefined;
   initialIconPack?: IconPackModule | undefined;
+  iconLoaders?: PackLoaderMap | undefined;
 }
 
 export function ThemeProvider({
@@ -137,6 +140,7 @@ export function ThemeProvider({
   defaultMode = "system",
   icons,
   initialIconPack,
+  iconLoaders,
 }: ThemeProviderProps) {
   const builtInIds = useMemo(() => getBuiltInThemeIds(), []);
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>(() =>
@@ -145,8 +149,7 @@ export function ThemeProvider({
   const [liveTheme, setLiveTheme] = useState<ThemeDefinition | null>(null);
 
   const [theme, setThemeState] = useState<string>(() => {
-    const stored = readStoredTheme();
-    return stored || defaultTheme;
+    return readStoredTheme() ?? defaultTheme;
   });
 
   const [modePreference, setModePreference] = useState<ModePreference>(() =>
@@ -256,7 +259,11 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider value={value}>
-      <IconProvider icons={icons} initialPack={initialIconPack}>
+      <IconProvider
+        icons={icons}
+        initialPack={initialIconPack}
+        loaders={iconLoaders ?? {}}
+      >
         {children}
       </IconProvider>
     </ThemeContext.Provider>
@@ -269,4 +276,8 @@ export function useTheme(): ThemeContextValue {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
+}
+
+export function useThemeOptional(): ThemeContextValue | null {
+  return useContext(ThemeContext) ?? null;
 }

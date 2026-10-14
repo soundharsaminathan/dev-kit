@@ -1,0 +1,169 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  border-radius: var(--radius-md, 0.5rem);
+  overflow: hidden;
+  background: var(--surface-elevated, var(--color-bg));
+}
+
+.hScroll {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scroll-padding-bottom: var(--space-4, 1rem);
+}
+
+.weekGrid {
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--surface-elevated, var(--color-bg)));
+}
+
+.gutter {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--surface-elevated, var(--color-bg)));
+}
+
+.dayHeader {
+  padding: 0.65rem 0.4rem;
+  text-align: center;
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.today {
+  background: var(--color-accent);
+  color: var(--color-fg-on-accent);
+}
+
+.dayLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));
+  padding-bottom: var(--space-3, 0.75rem);
+}
+
+.hours {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: repeat(24, 3rem);
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--surface-elevated, var(--color-bg));
+}
+
+.hourLabel {
+  font-size: 0.65rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  text-align: right;
+  padding: 0.15rem 0.35rem 0 0;
+  transform: translateY(-0.45rem);
+}
+
+.dayColumn {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(24, 3rem);
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.hourSlot {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.eventsLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.eventBlock {
+  position: absolute;
+  left: 0.15rem;
+  right: 0.15rem;
+  min-width: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.nowMarker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 2px;
+  transform: translateY(-1px);
+  background: var(--color-primary);
+  pointer-events: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--color-primary);
+    transform: translate(-35%, -50%);
+  }
+}
+
+@media (max-width: 720px) {
+  .weekGrid {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .header,
+  .body {
+    grid-template-columns: 2.5rem repeat(7, minmax(4.5rem, 1fr));
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .dayLabel {
+    font-size: 0.7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hourLabel {
+    transform: none;
+  }
+}

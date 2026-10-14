@@ -22,7 +22,10 @@ export type TabListProps = React.ComponentPropsWithoutRef<"div"> & {
   ref?: Ref<HTMLDivElement>;
 };
 
-export type TabProps = {
+export type TabProps = Omit<
+  React.ComponentPropsWithoutRef<"div">,
+  "id" | "children" | "className" | "ref"
+> & {
   id: Key;
   children?: ReactNode;
   className?: string | undefined;
@@ -40,6 +43,7 @@ export type TabPanelProps = {
 export type TabsContextValue<T extends object = object> = {
   state: TabListState<T>;
   orientation: TabsOrientation;
+  layoutId: string;
 };
 
 export type TabListContextValue = {

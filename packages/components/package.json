@@ -71,6 +71,12 @@
       "import": "./dist/card/index.js",
       "default": "./dist/card/index.js"
     },
+    "./chart": {
+      "development": "./src/chart/index.ts",
+      "types": "./dist/chart/index.d.ts",
+      "import": "./dist/chart/index.js",
+      "default": "./dist/chart/index.js"
+    },
     "./alert": {
       "development": "./src/alert/index.ts",
       "types": "./dist/alert/index.d.ts",
@@ -359,6 +365,12 @@
       "import": "./dist/toast/index.js",
       "default": "./dist/toast/index.js"
     },
+    "./toast/toast-context": {
+      "development": "./src/toast/toast-context.ts",
+      "types": "./dist/toast/toast-context.d.ts",
+      "import": "./dist/toast/toast-context.js",
+      "default": "./dist/toast/toast-context.js"
+    },
     "./toast/toast.types": {
       "development": "./src/toast/toast.types.ts",
       "types": "./dist/toast/toast.types.d.ts"
@@ -471,6 +483,12 @@
       "import": "./dist/virtualizer/index.js",
       "default": "./dist/virtualizer/index.js"
     },
+    "./swipeable": {
+      "development": "./src/swipeable/index.ts",
+      "types": "./dist/swipeable/index.d.ts",
+      "import": "./dist/swipeable/index.js",
+      "default": "./dist/swipeable/index.js"
+    },
     "./button/styles": {
       "development": "./src/styles.ts",
       "import": "./dist/styles.js",
@@ -491,8 +509,9 @@
     "test:coverage": "vitest run --coverage --config ../../vitest.config.ts --project components"
   },
   "sideEffects": [
-    "*.css",
-    "*.scss"
+    "**/*.css",
+    "**/*.scss",
+    "./dist/styles.js"
   ],
   "peerDependencies": {
     "react": ">=19.2.0 <20",
@@ -501,6 +520,7 @@
   "dependencies": {
     "@base-ui/react": "1.4.1",
     "@dev-ui/core": "workspace:*",
+    "@dev-ui/hooks": "workspace:*",
     "@dev-ui/icons": "workspace:*",
     "@dev-ui/tokens": "workspace:*",
     "@internationalized/date": "^3.12.2",
@@ -573,7 +593,9 @@
     "@react-stately/virtualizer": "^4.5.1",
     "@react-types/color": "^3.2.0",
     "@react-types/meter": "^3.5.0",
-    "@react-types/shared": "^3.35.0"
+    "@react-types/shared": "^3.35.0",
+    "motion": "11.15.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@dev-ui/icons-packs": "workspace:*",

@@ -38,6 +38,7 @@ export type ToastContent = {
 export type ToastProviderProps = ToastStateProps & {
   children: ReactNode;
   position?: ToastPosition;
+  timeout?: number;
   queue?: ToastQueue<ToastContent>;
 };
 

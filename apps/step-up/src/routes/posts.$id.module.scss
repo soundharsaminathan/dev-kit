@@ -1,0 +1,47 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.author {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+}
+
+.gallery {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.image {
+  width: 100%;
+  max-height: 36rem;
+  object-fit: cover;
+  border-radius: var(--radius-md, 0.5rem);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.comment {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}

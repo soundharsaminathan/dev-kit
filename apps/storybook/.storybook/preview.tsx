@@ -1,5 +1,6 @@
 import { OverlayProvider } from "@dev-ui/components/popover";
 import { IconProvider, packLibraries, resolveIconTheme } from "@dev-ui/icons";
+import { defaultPackLoaders } from "@dev-ui/icons/loaders";
 import lucidePack from "@dev-ui/icons-packs/lucide";
 import type { Preview } from "@storybook/react-vite";
 import MockDate from "mockdate";
@@ -44,7 +45,11 @@ function IconPackSync({
   const iconTheme = resolveIconTheme(iconPack);
 
   return (
-    <IconProvider icons={iconTheme} initialPack={lucidePack}>
+    <IconProvider
+      icons={iconTheme}
+      initialPack={lucidePack}
+      loaders={defaultPackLoaders}
+    >
       {children}
     </IconProvider>
   );

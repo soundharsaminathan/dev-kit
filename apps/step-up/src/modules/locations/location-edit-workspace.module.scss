@@ -1,0 +1,264 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.workspace {
+  display: grid;
+  gap: var(--space-4, 1rem);
+  align-items: start;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  min-width: 0;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  min-width: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--card-background, var(--color-card, var(--color-bg)));
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2, 0.5rem);
+
+  svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.2rem;
+    color: var(--color-accent);
+    flex-shrink: 0;
+  }
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.cardHint {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  text-wrap: pretty;
+}
+
+.fields {
+  display: grid;
+  gap: var(--space-3, 0.75rem);
+}
+
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.charCount {
+  margin: 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-fg) 52%, transparent);
+  text-align: end;
+}
+
+.map {
+  min-width: 0;
+}
+
+.amenityGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.75rem, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.amenity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-height: 2.75rem;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-lg, 0.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) var(--interaction-transition-curve, ease),
+    border-color var(--motion-fast, 150ms) var(--interaction-transition-curve, ease),
+    transform var(--motion-fast, 150ms) var(--interaction-transition-curve, ease);
+
+  svg {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+    color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  }
+}
+
+.amenity:hover {
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.amenity:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.amenity[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--color-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+
+  svg {
+    color: var(--color-accent);
+  }
+}
+
+.tabList {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+  width: 100%;
+  height: auto;
+  overflow-x: auto;
+  padding: var(--space-1, 0.25rem) 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.tab {
+  height: auto;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+  padding-top: var(--space-3, 0.75rem);
+}
+
+.listHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-lg, 0.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.footer {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) 0 var(--space-1, 0.25rem);
+}
+
+.saved {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.unsaved {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+.mobileSave {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .map {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+  }
+
+  .fieldBlock {
+    grid-column: 1;
+  }
+
+  .footer {
+    display: flex;
+  }
+
+  .mobileSave {
+    display: none;
+  }
+
+  .tab {
+    padding: 0.625rem var(--space-3, 0.75rem);
+  }
+}
+
+@media (min-width: 1080px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.9fr);
+  }
+
+  .rail {
+    position: sticky;
+    top: 4.5rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .unsaved {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .amenity,
+  .amenity:active {
+    transition-duration: 0ms;
+    transform: none;
+  }
+}

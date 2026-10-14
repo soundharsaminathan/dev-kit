@@ -730,6 +730,28 @@ const CircleDashed = ({
   </span>
 );
 
+const CircleUser = ({
+  className,
+  style,
+  "aria-hidden": ariaHidden = true,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+  "aria-hidden"?: boolean;
+}) => (
+  <span
+    aria-hidden={ariaHidden}
+    className={
+      className
+        ? `material-symbols-sharp ${className}`
+        : "material-symbols-sharp"
+    }
+    style={{ fontSize: "1.25em", lineHeight: 1, ...style }}
+  >
+    account_circle
+  </span>
+);
+
 const Clipboard = ({
   className,
   style,
@@ -2050,6 +2072,28 @@ const PenSquare = ({
   </span>
 );
 
+const PhoneCall = ({
+  className,
+  style,
+  "aria-hidden": ariaHidden = true,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+  "aria-hidden"?: boolean;
+}) => (
+  <span
+    aria-hidden={ariaHidden}
+    className={
+      className
+        ? `material-symbols-sharp ${className}`
+        : "material-symbols-sharp"
+    }
+    style={{ fontSize: "1.25em", lineHeight: 1, ...style }}
+  >
+    phone_in_talk
+  </span>
+);
+
 const Pin = ({
   className,
   style,
@@ -2988,6 +3032,7 @@ const pack = {
     "chevrons-up-down": ChevronsUpDown,
     circle: Circle,
     "circle-dashed": CircleDashed,
+    "circle-user": CircleUser,
     clipboard: Clipboard,
     "clipboard-paste": ClipboardPaste,
     clock: Clock,
@@ -3048,6 +3093,7 @@ const pack = {
     "panel-left": PanelLeft,
     paperclip: Paperclip,
     "pen-square": PenSquare,
+    "phone-call": PhoneCall,
     pin: Pin,
     plus: Plus,
     "plus-square": PlusSquare,

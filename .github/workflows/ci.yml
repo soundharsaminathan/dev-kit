@@ -10,6 +10,12 @@ permissions:
   checks: write
   pull-requests: write
 
+# One CI run per PR (or ref). Newer pushes cancel in-flight runs so they
+# do not pile up and fight for runners / Nx Cloud.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
@@ -31,8 +37,14 @@ jobs:
       - name: Run affected Vitest (PR)
         if: github.event_name != 'merge_group'
         run: |
-          pnpm exec nx affected -t test:ci --base=origin/${{ github.base_ref }}
-          pnpm exec nx run dev-kit:merge-coverage
+          # Exclude workspace aggregator: its test:ci → merge-coverage dependsOn
+          # forces every package's suite even when only a few apps changed.
+          pnpm exec nx affected -t test:ci --base=origin/${{ github.base_ref }} --exclude=dev-kit
+          if compgen -G "coverage/*/coverage-summary.json" > /dev/null; then
+            pnpm exec tsx scripts/merge-coverage.ts
+          else
+            echo "No affected coverage summaries to merge; skipping."
+          fi
         env:
           CI: true
 
@@ -42,6 +54,19 @@ jobs:
         env:
           CI: true
 
+      - name: Drop invalid JUnit reports
+        if: always() && !cancelled()
+        run: |
+          # Empty/corrupt reports break dorny/test-reporter (null testsuites).
+          # Shared directory cache races used to restore 0-byte files; skip those.
+          shopt -s nullglob
+          for f in test-results/junit-*.xml; do
+            if [ ! -s "$f" ] || ! grep -q '<testsuites' "$f"; then
+              echo "Removing invalid JUnit report: $f ($(wc -c <"$f") bytes)"
+              rm -f "$f"
+            fi
+          done
+
       - name: Publish test report
         uses: dorny/test-reporter@v3
         if: always() && !cancelled()
@@ -49,6 +74,7 @@ jobs:
           name: Vitest
           path: test-results/junit-*.xml
           reporter: java-junit
+          fail-on-empty: false
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
@@ -102,7 +128,11 @@ jobs:
         if: github.event_name != 'merge_group'
         run: |
           pnpm affected:e2e --base=origin/${{ github.base_ref }}
-          pnpm exec nx run showcase:test:e2e
+          if pnpm exec nx show projects --affected --base=origin/${{ github.base_ref }} | grep -qx showcase; then
+            pnpm exec nx run showcase:test:e2e
+          else
+            echo "Skipping showcase visual e2e (showcase not affected)"
+          fi
         env:
           CI: true
 
@@ -124,4 +154,200 @@ jobs:
           path: |
             apps/storybook/test-results/
             apps/showcase/test-results/
+          retention-days: 7
+
+  step-up-regression:
+    name: classa regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: step_up_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AUTH_BYPASS: "true"
+      VITE_AUTH_BYPASS: "true"
+      VITE_API_URL: http://localhost:3199
+      STEP_UP_API_URL: http://localhost:3199
+      STEP_UP_WEB_URL: http://localhost:5199
+      STEP_UP_API_PORT: "3199"
+      STEP_UP_WEB_PORT: "5199"
+      PORT: "3199"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+      SESSION_QR_SECRET: ci-session-qr-secret-0123456789abcdef
+      JOBS_SECRET: ci-jobs-secret-0123456789abcdef0123456789
+      # Non-secret CI dummies (64-char hex). Seed encrypts PII; chat wraps conversation keys.
+      CHAT_MASTER_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      PII_MASTER_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Detect classa changes
+        id: changes
+        run: |
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^(apps/step-up|apps/step-up-api)/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create migrate smoke database
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE step_up_migrate;"
+
+      - name: Migration smoke
+        if: steps.changes.outputs.run == 'true'
+        working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+        run: |
+          pnpm exec prisma generate
+          pnpm exec nx run step-up-api:test:migrations
+
+      - name: Generate Prisma client, migrate, and e2e seed
+        if: steps.changes.outputs.run == 'true'
+        working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+          pnpm prisma:seed:e2e
+
+      - name: Vitest API + UI
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          pnpm exec nx run step-up-api:test
+          pnpm exec nx run step-up:test
+        env:
+          CI: true
+
+      - name: Install Playwright browser
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm --filter @step-up/web exec playwright install chromium --with-deps
+
+      - name: API HTTP integration
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm exec nx run step-up:test:http
+        env:
+          CI: true
+
+      - name: Critical Playwright journeys
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm exec nx run step-up:test:e2e:critical
+        env:
+          CI: true
+
+      - name: Upload classa regression report
+        uses: actions/upload-artifact@v7
+        if: always() && steps.changes.outputs.run == 'true' && !cancelled()
+        with:
+          name: step-up-regression-report
+          path: |
+            apps/step-up/playwright-report/
+            apps/step-up/test-results/
+          retention-days: 7
+
+  step-up-e2e:
+    name: classa E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name == 'merge_group'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: step_up_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AUTH_BYPASS: "true"
+      VITE_AUTH_BYPASS: "true"
+      VITE_API_URL: http://localhost:3199
+      STEP_UP_API_URL: http://localhost:3199
+      STEP_UP_WEB_URL: http://localhost:5199
+      STEP_UP_API_PORT: "3199"
+      STEP_UP_WEB_PORT: "5199"
+      PORT: "3199"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+      SESSION_QR_SECRET: ci-session-qr-secret-0123456789abcdef
+      JOBS_SECRET: ci-jobs-secret-0123456789abcdef0123456789
+      # Non-secret CI dummies (64-char hex). Seed encrypts PII; chat wraps conversation keys.
+      CHAT_MASTER_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      PII_MASTER_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Create migrate smoke database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE step_up_migrate;"
+
+      - name: Migration smoke
+        working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_migrate?schema=public
+        run: |
+          pnpm exec prisma generate
+          pnpm exec nx run step-up-api:test:migrations
+
+      - name: Generate Prisma client, migrate, and e2e seed
+        working-directory: apps/step-up-api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/step_up_e2e?schema=public
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+          pnpm prisma:seed:e2e
+
+      - name: Install Playwright browser
+        run: pnpm --filter @step-up/web exec playwright install chromium --with-deps
+
+      - name: Run classa Playwright E2E
+        run: pnpm exec nx run step-up:test:e2e
+        env:
+          CI: true
+
+      - name: Upload classa Playwright report
+        uses: actions/upload-artifact@v7
+        if: always() && !cancelled()
+        with:
+          name: step-up-playwright-report
+          path: |
+            apps/step-up/playwright-report/
+            apps/step-up/test-results/
           retention-days: 7

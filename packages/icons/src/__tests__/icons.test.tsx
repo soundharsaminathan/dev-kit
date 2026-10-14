@@ -153,6 +153,18 @@ describe("IconProvider", () => {
   });
 });
 
+describe("IconProvider defaults", () => {
+  it("defaults to the lucide pack when no icons theme is provided", () => {
+    render(
+      <IconProvider initialPack={lucidePack}>
+        <Icon name="search" data-testid="icon" />
+      </IconProvider>,
+    );
+
+    expect(screen.getByTestId("icon")).toBeInTheDocument();
+  });
+});
+
 describe("registerIconPack", () => {
   it("throws when pack loader is missing", async () => {
     __resetIconCachesForTests();
@@ -215,6 +227,77 @@ describe("useIcons", () => {
   });
 });
 
+describe("IconProvider pack loading edge cases", () => {
+  it("stops loading state when a pack rejects while mounted", async () => {
+    __resetIconCachesForTests();
+    __clearCustomPacksForTests();
+
+    registerIconPack("reject-mounted", {
+      load: () => Promise.reject(new Error("boom")),
+    });
+
+    render(
+      <IconProvider icons={{ library: "reject-mounted" }}>
+        <Icon name="search" fallback={<span data-testid="fallback" />} />
+      </IconProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("fallback")).toBeInTheDocument();
+    });
+  });
+
+  it("ignores a pending pack resolution after unmount", async () => {
+    __resetIconCachesForTests();
+    __clearCustomPacksForTests();
+
+    let resolvePack: (value: { default: typeof lucidePack }) => void = () => {};
+    const pendingPack = new Promise<{ default: typeof lucidePack }>(
+      (resolve) => {
+        resolvePack = resolve;
+      },
+    );
+
+    registerIconPack("unmount-then", { load: () => pendingPack });
+
+    const { unmount } = render(
+      <IconProvider icons={{ library: "unmount-then" }}>
+        <Icon name="search" fallback={<span data-testid="fallback" />} />
+      </IconProvider>,
+    );
+
+    unmount();
+    resolvePack({ default: lucidePack });
+
+    await expect(pendingPack).resolves.toEqual({ default: lucidePack });
+  });
+
+  it("ignores a pending pack rejection after unmount", async () => {
+    __resetIconCachesForTests();
+    __clearCustomPacksForTests();
+
+    let rejectPack: (error: Error) => void = () => {};
+    const pendingPack = new Promise<{ default: typeof lucidePack }>(
+      (_resolve, reject) => {
+        rejectPack = reject;
+      },
+    );
+
+    registerIconPack("unmount-catch", { load: () => pendingPack });
+
+    const { unmount } = render(
+      <IconProvider icons={{ library: "unmount-catch" }}>
+        <Icon name="search" fallback={<span data-testid="fallback" />} />
+      </IconProvider>,
+    );
+
+    unmount();
+    rejectPack(new Error("boom"));
+
+    await expect(pendingPack).rejects.toThrow("boom");
+  });
+});
+
 describe("icon cache", () => {
   it("tracks the active pack id and reuses in-flight loads", async () => {
     __resetIconCachesForTests();
@@ -241,7 +324,10 @@ describe("IconProvider", () => {
     __clearCustomPacksForTests();
 
     render(
-      <IconProvider icons={{ library: "lucide" }}>
+      <IconProvider
+        icons={{ library: "lucide" }}
+        loaders={{ lucide: () => import("@dev-ui/icons-packs/lucide") }}
+      >
         <Icon name="search" data-testid="search-icon" />
       </IconProvider>,
     );

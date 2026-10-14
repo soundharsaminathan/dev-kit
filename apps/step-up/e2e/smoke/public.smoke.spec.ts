@@ -1,0 +1,150 @@
+import { apiBaseUrl, expect, SMOKE, test, waitForAppReady } from "./fixtures";
+
+test.describe("public smoke @smoke", () => {
+  test("guest public pages render @smoke", async ({ page }) => {
+    for (const pathName of [
+      "/",
+      "/discover",
+      "/for-studios",
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/auth/action",
+      "/join",
+    ]) {
+      await page.goto(pathName, { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await expect(page).not.toHaveURL(/something-went-wrong/);
+      await expect
+        .poll(async () => {
+          return (
+            (await page.getByRole("heading").count()) +
+            (await page.getByRole("button").count()) +
+            (await page.getByRole("link").count())
+          );
+        })
+        .toBeGreaterThan(0);
+    }
+  });
+
+  test("login picker hides test studios unless includeTest is set @smoke", async ({
+    page,
+  }) => {
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    await expect(page.getByText("Smoke Test Studio")).toHaveCount(0);
+
+    await page.goto("/login?includeTest=1", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    const picker = page.getByTestId("login-studio-select");
+    await expect(picker).toBeVisible();
+    await expect(picker).toBeEnabled();
+    await picker.click();
+    // Native HiddenSelect <option>s are in the DOM but not visible; assert the
+    // open listbox item the user actually sees.
+    await expect(
+      page
+        .getByRole("listbox")
+        .getByRole("option", { name: "Smoke Test Studio" }),
+    ).toBeVisible();
+  });
+
+  test("direct login page has username and password only @smoke", async ({
+    page,
+  }) => {
+    await page.goto("/login?direct=1", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByLabel("Username")).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("login-studio-select")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Continue with Google" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "New here? Create a student account" }),
+    ).toHaveCount(0);
+  });
+
+  test("guest is redirected from authed shells to login @smoke", async ({
+    page,
+  }) => {
+    for (const pathName of ["/me", "/app", "/admin"]) {
+      await page.goto(pathName, { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await expect(page).toHaveURL(/\/login/);
+    }
+  });
+
+  test("guest cannot attach a freelance trainer @smoke", async () => {
+    const response = await fetch(
+      `${apiBaseUrl()}/studios/${SMOKE.studioId}/trainer-links`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ trainerId: SMOKE.users.TRAINER.id }),
+      },
+    );
+    expect(response.status).toBe(401);
+  });
+
+  test("guest rating write is denied @smoke", async () => {
+    const response = await fetch(`${apiBaseUrl()}/discover/ratings`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        studentId: "anon",
+        target: "STUDIO",
+        studioId: SMOKE.studioId,
+        category: "DANCE",
+        rating: 5,
+      }),
+    });
+    expect(response.status).toBe(401);
+  });
+
+  test("marketplace class Book opens the unified sheet @smoke", async ({
+    page,
+  }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await waitForAppReady(page);
+    const book = page.getByRole("button", { name: "Book" }).first();
+    if ((await book.count()) === 0) {
+      test.skip(true, "No public class inventory on this seed");
+      return;
+    }
+    await book.click();
+    await expect(page.getByTestId("marketplace-book-sheet")).toBeVisible();
+    await expect(page.getByText(/trial|book/i).first()).toBeVisible();
+  });
+
+  test("public entity pages render for seeded ids @smoke", async ({ page }) => {
+    const paths = [
+      `/studio/${SMOKE.studioId}`,
+      `/trainers/${SMOKE.users.TRAINER.id}`,
+      `/users/${SMOKE.users.STUDENT.id}`,
+      `/posts/${SMOKE.postId}`,
+    ];
+    for (const pathName of paths) {
+      await page.goto(pathName, { waitUntil: "domcontentloaded" });
+      await waitForAppReady(page);
+      await expect(page).not.toHaveURL(/\/login/);
+      const errorCopy = page.getByText(
+        /something went wrong|unexpected error/i,
+      );
+      // Public pages may 404-copy for private profiles; either content or a
+      // deliberate empty/not-found state is acceptable — never a crash.
+      await expect
+        .poll(async () => {
+          const interactive =
+            (await page.getByRole("heading").count()) +
+            (await page.getByRole("button").count()) +
+            (await page.getByRole("link").count()) +
+            (await page.getByText(/not found|private|unavailable/i).count());
+          const crashed = await errorCopy.count();
+          return crashed === 0 && interactive > 0 ? "ok" : "bad";
+        })
+        .toBe("ok");
+    }
+  });
+});

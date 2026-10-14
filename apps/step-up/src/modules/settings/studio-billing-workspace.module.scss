@@ -1,0 +1,459 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.workspace {
+  display: grid;
+  gap: var(--space-4, 1rem);
+  align-items: start;
+  min-width: 0;
+}
+
+.workspace[data-dirty="true"] {
+  padding-bottom: 4.75rem;
+}
+
+.editor,
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
+.card,
+.summary,
+.how {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-4, 1rem);
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3.5%, var(--color-bg));
+}
+
+.card[data-locked="true"] {
+  background: color-mix(in srgb, var(--color-fg) 2%, var(--color-bg));
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+}
+
+.cardIcon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary, var(--color-accent));
+}
+
+.card[data-locked="true"] .cardIcon {
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.cardIcon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.cardCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.cardHint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+  text-wrap: pretty;
+}
+
+.pair,
+.stack {
+  display: grid;
+  gap: var(--space-4, 1rem);
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.fieldLabel {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  text-wrap: pretty;
+}
+
+.controlRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.suffix {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.stepper {
+  width: 9.25rem;
+  flex-shrink: 0;
+}
+
+.stepper :global([data-slot="number-field"]) {
+  width: 100%;
+}
+
+.stepper :global([data-number-field-group]) {
+  width: 100%;
+  height: 2.75rem;
+}
+
+.stepper :global([data-number-field-decrement]),
+.stepper :global([data-number-field-increment]) {
+  width: 2.75rem;
+}
+
+.money {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  align-items: stretch;
+  width: min(14rem, 100%);
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 3%, var(--color-bg));
+  overflow: hidden;
+}
+
+.money[data-invalid="true"] {
+  border-color: var(--color-danger, #ff3b30);
+}
+
+.currency {
+  display: grid;
+  place-items: center;
+  border-inline-end: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.money .stepper {
+  width: auto;
+}
+
+.money :global([data-number-field-group]) {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.readout {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 2.5%, var(--color-bg));
+  font-size: 0.875rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.4rem;
+  min-height: 1.75rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.status[data-enabled="true"] {
+  color: var(--color-success, #34c759);
+  border-color: color-mix(in srgb, var(--color-success, #34c759) 28%, transparent);
+  background: color-mix(in srgb, var(--color-success, #34c759) 10%, transparent);
+}
+
+.status[data-enabled="false"] {
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.dot[data-empty="true"] {
+  background: transparent;
+  border: 1.5px solid currentColor;
+}
+
+.timezone {
+  width: min(28rem, 100%);
+}
+
+.timezone :global([data-input-group]),
+.timezone :global(input) {
+  min-height: 2.75rem;
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+}
+
+.confirmLine {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.lockNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.lockNote svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.percent {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0 0.85rem;
+  width: max-content;
+  border-radius: 0.75rem;
+  border: 1px dashed color-mix(in srgb, var(--color-fg) 16%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 2.5%, var(--color-bg));
+  font-variant-numeric: tabular-nums;
+}
+
+.percentValue {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  list-style: none;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--color-fg) 3.5%, transparent);
+}
+
+.flowItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+}
+
+.flowItem[data-current="true"] {
+  color: var(--color-fg);
+}
+
+.arrow {
+  display: block;
+  margin-inline-start: 0.15rem;
+  color: color-mix(in srgb, var(--color-fg) 38%, transparent);
+  font-weight: 500;
+}
+
+.error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-danger, #ff3b30);
+}
+
+.summaryTitle,
+.howTitle {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-height: 4.25rem;
+  padding: var(--space-3, 0.75rem);
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 2.5%, var(--color-bg));
+}
+
+.metricLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.metricValue {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricMeta {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+}
+
+.stepIndex {
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary, var(--color-accent));
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.saveError {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-danger, #ff3b30);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stepper :global([data-number-field-decrement]):focus-visible,
+.stepper :global([data-number-field-increment]):focus-visible,
+.timezone :global(input):focus-visible,
+.timezone :global(button):focus-visible {
+  outline: 2px solid var(--color-primary, var(--color-accent));
+  outline-offset: 2px;
+}
+
+@media (min-width: 640px) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media (min-width: 1080px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1.75fr) minmax(16.5rem, 18.75rem);
+    gap: var(--space-4, 1rem);
+  }
+
+  .rail {
+    position: sticky;
+    top: 4.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .metric,
+  .status {
+    transition: none;
+  }
+}

@@ -12,7 +12,11 @@ export function globEntryMap(options: {
       cwd: srcDir,
       ignore: ["**/*.d.ts", ...ignore],
     }).map((file) => {
-      const entryName = file.slice(0, file.length - extname(file).length);
+      const normalized = file.replaceAll("\\", "/");
+      const entryName = normalized.slice(
+        0,
+        normalized.length - extname(normalized).length,
+      );
       return [entryName, resolve(srcDir, file)];
     }),
   );

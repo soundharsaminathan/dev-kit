@@ -31,12 +31,17 @@ function useAvatarContext(component: string): AvatarContextValue {
   return context;
 }
 
-function Avatar({ size = "md", children, ...props }: AvatarProps) {
+function Avatar({ size = "md", children, className, ...props }: AvatarProps) {
   const [status, setStatus] = useState<ImageLoadingStatus>("idle");
 
   return (
     <AvatarContext.Provider value={{ status, setStatus, size }}>
-      <span data-avatar="" data-size={size} className={styles.root} {...props}>
+      <span
+        data-avatar=""
+        data-size={size}
+        className={cn(styles.root, className)}
+        {...props}
+      >
         {children}
       </span>
     </AvatarContext.Provider>
@@ -107,12 +112,17 @@ function AvatarBadge({ className, children, ...props }: AvatarBadgeProps) {
   );
 }
 
-function AvatarGroup({ size = "md", children, ...props }: AvatarGroupProps) {
+function AvatarGroup({
+  size = "md",
+  children,
+  className,
+  ...props
+}: AvatarGroupProps) {
   return (
     <div
       data-avatar-group=""
       data-size={size}
-      className={styles.group}
+      className={cn(styles.group, className)}
       {...props}
     >
       {children}

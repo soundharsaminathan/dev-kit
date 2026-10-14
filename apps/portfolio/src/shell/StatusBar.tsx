@@ -54,14 +54,6 @@ export function StatusBar() {
         Email
       </button>
       <a
-        className={styles.item}
-        href={profile.github}
-        target="_blank"
-        rel="noreferrer"
-      >
-        GitHub
-      </a>
-      <a
         className={`${styles.item} ${styles.hideMobile}`}
         href={profile.linkedin}
         target="_blank"

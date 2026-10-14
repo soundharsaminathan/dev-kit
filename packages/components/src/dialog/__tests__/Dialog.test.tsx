@@ -53,7 +53,9 @@ describe("Dialog", () => {
   it("opens dialog with accessible title", () => {
     renderDialog({ defaultOpen: true });
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Confirm action" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Confirm action" }),
     ).toBeInTheDocument();

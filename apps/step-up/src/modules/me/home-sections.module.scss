@@ -1,0 +1,657 @@
+.studioBanner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-3, 0.75rem);
+  aspect-ratio: 16 / 9;
+  min-height: 14.5rem;
+  margin-inline: calc(-1 * var(--space-4, 1rem));
+  margin-block-start: calc(-1 * var(--space-3, 0.75rem));
+  padding: calc(0.75rem + env(safe-area-inset-top, 0px)) var(--space-4, 1rem)
+    var(--space-4, 1rem);
+  overflow: visible;
+  color: #fff;
+}
+
+.studioBanner[data-flush-top="true"] {
+  margin-block-start: 0;
+  padding-top: var(--space-3, 0.75rem);
+}
+
+.studioBannerMedia {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.studioBannerImage,
+.studioBannerFallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.studioBannerMedia picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.studioBannerFallback {
+  background: var(--hero-gradient, var(--color-primary));
+}
+
+.studioBannerScrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(28 24 18 / 18%) 0%,
+    rgb(28 24 18 / 8%) 35%,
+    rgb(28 24 18 / 72%) 100%
+  );
+  pointer-events: none;
+}
+
+.studioBannerTop {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+  margin-bottom: auto;
+}
+
+.studioBannerActions {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+.studioBannerCopy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  max-width: 22rem;
+}
+
+.studioBannerEyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.88;
+}
+
+.studioBannerTitle {
+  margin: 0;
+  font-size: clamp(1.25rem, 4.5vw, 1.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.studioBannerPill {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  align-self: flex-start;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: var(--radius-full, 9999px);
+  background: #fff;
+  color: var(--nav-bar-bg, #1c1a17);
+  box-shadow: var(--shadow-md, 0 12px 28px rgb(0 0 0 / 16%));
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: start;
+  cursor: pointer;
+  transition: transform var(--motion-fast, 150ms) ease;
+}
+
+.studioBannerPill:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.studioBannerPill :global(svg) {
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.studioBannerPill strong {
+  font-weight: 700;
+}
+
+.sectionEyebrow {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.upcomingCard,
+.trialCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--card-shadow, var(--shadow-sm));
+  text-decoration: none;
+  color: inherit;
+  transition: transform var(--motion-fast, 150ms) ease;
+}
+
+.upcomingCard:active,
+.trialCard:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.upcomingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.countdownBadge {
+  flex-shrink: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.upcomingCover,
+.upcomingCoverFallback {
+  width: 100%;
+  height: 7rem;
+  border-radius: var(--radius-xl, 1rem);
+  object-fit: cover;
+}
+
+.upcomingCoverFallback {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-primary) 45%, #2b2118),
+    color-mix(in srgb, var(--color-primary) 16%, #4a3a2c)
+  );
+}
+
+.upcomingBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.trialCard {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-primary) 88%, #3d2a1c),
+    color-mix(in srgb, var(--color-primary) 55%, #2b2118)
+  );
+  color: #fff;
+}
+
+.trialCard .sectionEyebrow,
+.trialCard .timelineMeta {
+  color: rgb(255 255 255 / 0.82);
+}
+
+.trialCta {
+  align-self: flex-start;
+  margin-top: var(--space-1, 0.25rem);
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-full, 9999px);
+  background: #fff;
+  color: #1c1a17;
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.instructorCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 8rem;
+  height: 11.5rem;
+  padding: var(--space-3, 0.75rem);
+  overflow: hidden;
+  border-radius: var(--radius-xl, 1rem);
+  background: var(--nav-bar-bg, #1c1a17);
+  box-shadow: var(--card-shadow, var(--shadow-sm));
+  text-decoration: none;
+  color: #fff;
+  transition: transform var(--motion-fast, 150ms) ease;
+}
+
+.instructorCard:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.instructorImage,
+.instructorFallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.instructorFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(
+      circle at 28% 18%,
+      color-mix(
+        in srgb,
+        var(--instructor-style-color, var(--color-primary)) 55%,
+        transparent
+      ),
+      transparent 60%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(
+        in srgb,
+        var(--instructor-style-color, var(--color-primary)) 78%,
+        #fff
+      ),
+      color-mix(
+        in srgb,
+        var(--instructor-style-color, var(--color-primary)) 72%,
+        #1c1a17
+      )
+    );
+}
+
+.instructorFallbackEmoji {
+  font-size: 1.25rem;
+  line-height: 1;
+  opacity: 0.92;
+}
+
+.instructorScrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(28 24 18 / 6%) 0%,
+    rgb(28 24 18 / 12%) 42%,
+    rgb(28 24 18 / 78%) 100%
+  );
+  pointer-events: none;
+}
+
+.instructorCopy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.instructorName {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructorMeta {
+  margin: 0;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, #fff 18%, transparent);
+  backdrop-filter: blur(8px);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heroEyebrow {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--card-shadow, var(--shadow-sm));
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr;
+  gap: var(--space-3, 0.75rem);
+  padding-block: var(--space-2, 0.5rem);
+}
+
+.timelineRail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.timelineDot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 22%, transparent);
+  margin-top: 0.2rem;
+}
+
+.timelineDot[data-state="completed"] {
+  background: var(--color-success, #34c759);
+}
+
+.timelineDot[data-state="now"] {
+  background: var(--color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.timelineLine {
+  flex: 1;
+  width: 2px;
+  min-height: 1.25rem;
+  background: color-mix(in srgb, var(--color-fg) 12%, transparent);
+  margin-block: 0.25rem;
+}
+
+.timelineTitle {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.timelineMeta {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.progressCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  width: 16.5rem;
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--card-shadow, var(--shadow-sm));
+  text-decoration: none;
+  color: inherit;
+  transition: transform var(--motion-fast, 150ms) ease;
+}
+
+.progressCard:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.progressBar {
+  height: 0.5rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 10%, transparent);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+  width: 0;
+  transition: width var(--motion-normal, 250ms) ease;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--card-shadow, var(--shadow-sm));
+}
+
+.statValue {
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.goalCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--card-shadow, var(--shadow-sm));
+  width: 100%;
+  border: none;
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  transition: transform var(--motion-fast, 150ms) ease;
+}
+
+.goalCard:has(.goalMenu) {
+  grid-template-columns: auto 1fr auto;
+}
+
+.goalHit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.goalCard[data-interactive="true"]:has(.goalHit:active) {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.goalCopy {
+  min-width: 0;
+}
+
+.goalMenu {
+  position: relative;
+  z-index: 2;
+}
+
+.goalRing {
+  --progress: 0;
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: var(--radius-full, 9999px);
+  background: conic-gradient(
+    var(--color-primary) calc(var(--progress) * 1%),
+    color-mix(in srgb, var(--color-fg) 10%, transparent) 0
+  );
+  display: grid;
+  place-items: center;
+}
+
+.goalRingInner {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: inherit;
+  background: var(--card-background, var(--color-card));
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.875rem;
+}
+
+.achievements {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+}
+
+.badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  width: 5.5rem;
+  padding: var(--space-3, 0.75rem) var(--space-2, 0.5rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--card-shadow, var(--shadow-sm));
+  opacity: 0.45;
+}
+
+.badge[data-earned="true"] {
+  opacity: 1;
+}
+
+.badgeIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full, 9999px);
+  display: grid;
+  place-items: center;
+  background: var(--tag-lilac-bg, #f3e5f5);
+  color: var(--tag-lilac-fg, #7b1fa2);
+}
+
+.badgeTitle {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.communityCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  width: 14rem;
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--card-shadow, var(--shadow-sm));
+  text-decoration: none;
+  color: inherit;
+  transition: transform var(--motion-fast, 150ms) ease;
+}
+
+.communityCard:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+.communityTag {
+  align-self: flex-start;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--tag-mint-bg, #e8f5e9);
+  color: var(--tag-mint-fg, #2e7d32);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.sectionEnter {
+  opacity: 1;
+  transform: none;
+}
+
+@media (min-width: 768px) {
+  .studioBanner {
+    margin-inline: calc(-1 * var(--space-6, 1.5rem));
+    margin-block-start: calc(-1 * var(--space-4, 1rem));
+    padding-inline: var(--space-6, 1.5rem);
+    aspect-ratio: 3 / 1;
+    min-height: 16.5rem;
+    border-radius: 0 0 var(--radius-2xl, 1.25rem) var(--radius-2xl, 1.25rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressCard,
+  .goalCard,
+  .communityCard,
+  .studioBannerPill,
+  .upcomingCard,
+  .trialCard,
+  .instructorCard {
+    transition-duration: 0ms;
+  }
+
+  .progressCard:active,
+  .goalCard[data-interactive="true"]:has(.goalHit:active),
+  .communityCard:active,
+  .studioBannerPill:active,
+  .upcomingCard:active,
+  .trialCard:active,
+  .instructorCard:active {
+    transform: none;
+  }
+
+  .progressFill {
+    transition-duration: 0ms;
+  }
+}
+

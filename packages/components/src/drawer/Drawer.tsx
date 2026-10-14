@@ -13,6 +13,7 @@ import {
   type HTMLAttributes,
   type RefObject,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -30,6 +31,9 @@ import type {
 } from "./drawer.types";
 
 const DISMISS_THRESHOLD = 100;
+const EXIT_ANIMATION_MS = 550;
+const SWIPE_IGNORE_SELECTOR =
+  "input, textarea, select, option, button, a, label, [contenteditable]:not([contenteditable='false']), [data-input], [role='textbox'], [role='searchbox'], [role='combobox'], [role='spinbutton']";
 
 const DrawerPlacementContext = createContext<DrawerPlacement>("bottom");
 
@@ -48,6 +52,31 @@ function useDrawerContext(): DrawerContextValue {
     throw new Error("Drawer subcomponents must be used within Drawer");
   }
   return context;
+}
+
+function shouldIgnoreSwipeTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element && Boolean(target.closest(SWIPE_IGNORE_SELECTOR))
+  );
+}
+
+function allowInteractiveSwipeProps(
+  moveProps: DrawerMoveProps,
+): DrawerMoveProps {
+  const { onPointerDown, ...rest } = moveProps;
+  if (!onPointerDown) {
+    return rest;
+  }
+
+  return {
+    ...rest,
+    onPointerDown: (event) => {
+      if (shouldIgnoreSwipeTarget(event.target)) {
+        return;
+      }
+      onPointerDown(event);
+    },
+  };
 }
 
 function resolveClassName(
@@ -83,7 +112,8 @@ function getSwipeDelta(
 }
 
 function applySwipeStyle(
-  element: HTMLDivElement,
+  panel: HTMLDivElement,
+  overlay: HTMLDivElement | null,
   placement: DrawerPlacement,
   deltaX: number,
   deltaY: number,
@@ -103,17 +133,32 @@ function applySwipeStyle(
         ? dismissDelta
         : 0;
 
-  element.style.setProperty("--drawer-swipe-movement-x", `${movementX}px`);
-  element.style.setProperty("--drawer-swipe-movement-y", `${movementY}px`);
-  element.style.setProperty("--drawer-swipe-progress", String(progress));
-  element.dataset.swiping = "true";
+  panel.style.setProperty("--drawer-swipe-movement-x", `${movementX}px`);
+  panel.style.setProperty("--drawer-swipe-movement-y", `${movementY}px`);
+  panel.style.setProperty("--drawer-swipe-progress", String(progress));
+  panel.dataset.swiping = "true";
+
+  if (overlay) {
+    overlay.style.setProperty("--drawer-swipe-progress", String(progress));
+    overlay.dataset.swiping = "true";
+  }
 }
 
-function clearSwipeStyle(element: HTMLDivElement) {
-  element.style.removeProperty("--drawer-swipe-movement-x");
-  element.style.removeProperty("--drawer-swipe-movement-y");
-  element.style.removeProperty("--drawer-swipe-progress");
-  delete element.dataset.swiping;
+function clearSwipeStyle(
+  panel: HTMLDivElement,
+  overlay: HTMLDivElement | null,
+  { keepOffset = false }: { keepOffset?: boolean } = {},
+) {
+  if (!keepOffset) {
+    panel.style.removeProperty("--drawer-swipe-movement-x");
+    panel.style.removeProperty("--drawer-swipe-movement-y");
+    panel.style.removeProperty("--drawer-swipe-progress");
+    overlay?.style.removeProperty("--drawer-swipe-progress");
+  }
+  delete panel.dataset.swiping;
+  if (overlay) {
+    delete overlay.dataset.swiping;
+  }
 }
 
 function useDrawerSwipe({
@@ -121,11 +166,13 @@ function useDrawerSwipe({
   swipeToDismiss,
   onDismiss,
   panelRef,
+  overlayRef,
 }: {
   placement: DrawerPlacement;
   swipeToDismiss: boolean;
   onDismiss: () => void;
   panelRef: RefObject<HTMLDivElement | null>;
+  overlayRef: RefObject<HTMLDivElement | null>;
 }): DrawerMoveProps {
   const deltaRef = useRef({ x: 0, y: 0 });
 
@@ -136,8 +183,12 @@ function useDrawerSwipe({
       }
 
       const panel = panelRef.current;
+      const overlay = overlayRef.current;
       if (panel) {
         panel.dataset.swiping = "true";
+      }
+      if (overlay) {
+        overlay.dataset.swiping = "true";
       }
     },
     onMove({ deltaX, deltaY }) {
@@ -151,7 +202,7 @@ function useDrawerSwipe({
       if (!panel) {
         return;
       }
-      applySwipeStyle(panel, placement, deltaX, deltaY);
+      applySwipeStyle(panel, overlayRef.current, placement, deltaX, deltaY);
     },
     onMoveEnd() {
       if (!swipeToDismiss) {
@@ -163,17 +214,21 @@ function useDrawerSwipe({
         return;
       }
 
+      const overlay = overlayRef.current;
       const { x, y } = deltaRef.current;
       const dismissDelta = getSwipeDelta(placement, x, y);
-      clearSwipeStyle(panel);
 
       if (dismissDelta >= DISMISS_THRESHOLD) {
+        clearSwipeStyle(panel, overlay, { keepOffset: true });
         onDismiss();
+        return;
       }
+
+      clearSwipeStyle(panel, overlay);
     },
   });
 
-  return swipeToDismiss ? moveProps : {};
+  return swipeToDismiss ? allowInteractiveSwipeProps(moveProps) : {};
 }
 
 function Drawer({
@@ -185,16 +240,24 @@ function Drawer({
   isOpen,
   onOpenChange,
   placement = "bottom",
+  sizing = "static",
   swipeToDismiss = true,
   style,
 }: DrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const [isStarting, setIsStarting] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const openFrameRef = useRef<number | undefined>(undefined);
   const state = useOverlayTriggerState({
     ...(isOpen !== undefined ? { isOpen } : {}),
     ...(defaultOpen !== undefined ? { defaultOpen } : {}),
     ...(onOpenChange !== undefined ? { onOpenChange } : {}),
   });
+  const isPresentRef = useRef(state.isOpen);
+  const [isPresent, setIsPresent] = useState(state.isOpen);
+  const [isStarting, setIsStarting] = useState(state.isOpen);
+  const [isEnding, setIsEnding] = useState(false);
+
+  isPresentRef.current = isPresent;
 
   const { modalProps, underlayProps } = useModalOverlay(
     {
@@ -210,29 +273,113 @@ function Drawer({
     swipeToDismiss,
     onDismiss: state.close,
     panelRef,
+    overlayRef,
   });
 
   useLayoutEffect(() => {
-    if (!state.isOpen) {
+    if (state.isOpen) {
+      setIsPresent(true);
+      setIsEnding(false);
+      setIsStarting(true);
+
+      openFrameRef.current = requestAnimationFrame(() => {
+        openFrameRef.current = requestAnimationFrame(() => {
+          setIsStarting(false);
+        });
+      });
+
+      return () => {
+        if (openFrameRef.current !== undefined) {
+          cancelAnimationFrame(openFrameRef.current);
+        }
+      };
+    }
+
+    if (isPresentRef.current) {
+      setIsStarting(false);
+      setIsEnding(true);
+    }
+  }, [state.isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isEnding) {
       return;
     }
 
-    setIsStarting(true);
-    const frame = requestAnimationFrame(() => {
-      setIsStarting(false);
-    });
+    const panel = panelRef.current;
+    if (panel) {
+      void panel.getBoundingClientRect();
+    }
+  }, [isEnding]);
 
-    const focusTarget = getInitialFocusTarget(panelRef.current);
-    if (focusTarget !== true) {
-      focusTarget.focus();
+  useLayoutEffect(() => {
+    if (!state.isOpen || !isPresent || isStarting) {
+      return;
     }
 
-    return () => {
-      cancelAnimationFrame(frame);
-    };
-  }, [state.isOpen]);
+    const panel = panelRef.current;
+    if (!panel || panel.contains(document.activeElement)) {
+      return;
+    }
 
-  if (!state.isOpen) {
+    const focusTarget = getInitialFocusTarget(panel);
+    if (focusTarget !== true) {
+      focusTarget.focus();
+      return;
+    }
+
+    if (!panel.hasAttribute("tabindex")) {
+      panel.tabIndex = -1;
+    }
+    panel.focus();
+  }, [state.isOpen, isPresent, isStarting]);
+
+  useEffect(() => {
+    if (!isEnding) {
+      return;
+    }
+
+    const panel = panelRef.current;
+    const overlay = overlayRef.current;
+    if (!panel) {
+      setIsPresent(false);
+      setIsEnding(false);
+      return;
+    }
+
+    let finished = false;
+    const finishExit = () => {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      clearSwipeStyle(panel, overlay);
+      setIsPresent(false);
+      setIsEnding(false);
+    };
+
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target === panel && event.propertyName === "transform") {
+        finishExit();
+        return;
+      }
+      if (event.target === overlay && event.propertyName === "opacity") {
+        finishExit();
+      }
+    };
+
+    panel.addEventListener("transitionend", onTransitionEnd);
+    overlay?.addEventListener("transitionend", onTransitionEnd);
+    const timeout = window.setTimeout(finishExit, EXIT_ANIMATION_MS);
+
+    return () => {
+      panel.removeEventListener("transitionend", onTransitionEnd);
+      overlay?.removeEventListener("transitionend", onTransitionEnd);
+      window.clearTimeout(timeout);
+    };
+  }, [isEnding]);
+
+  if (!isPresent) {
     return (
       <DrawerContext.Provider value={{ placement, moveProps: {} }}>
         {null}
@@ -240,19 +387,26 @@ function Drawer({
     );
   }
 
+  const openAttr = state.isOpen && !isEnding ? "" : undefined;
+
   return (
     <DrawerContext.Provider value={{ placement, moveProps: swipeProps }}>
       <DrawerPlacementContext.Provider value={placement}>
         <OverlayContainer>
           <Overlay>
-            <div className={styles.overlay}>
+            <div
+              ref={overlayRef}
+              className={styles.overlay}
+              data-starting-style={isStarting ? "" : undefined}
+              data-ending-style={isEnding ? "" : undefined}
+            >
               {isDismissable ? (
                 <button
                   type="button"
                   {...underlayProps}
                   aria-label="Dismiss"
                   className={styles.backdrop}
-                  data-open=""
+                  data-open={openAttr}
                   onClick={() => {
                     state.close();
                   }}
@@ -261,23 +415,26 @@ function Drawer({
                 <div
                   {...underlayProps}
                   className={styles.backdrop}
-                  data-open=""
+                  data-open={openAttr}
                 />
               )}
               <div
-                className={cn(styles.viewport, styles[`viewport-${placement}`])}
-                data-open=""
+                className={styles.viewport}
+                data-open={openAttr}
+                data-placement={placement}
               >
                 <div
                   {...mergeProps(modalProps, swipeProps)}
                   ref={panelRef}
                   data-drawer=""
-                  data-open=""
+                  data-open={openAttr}
+                  data-placement={placement}
+                  data-sizing={sizing}
                   data-swipe-disabled={swipeToDismiss ? undefined : ""}
                   data-starting-style={isStarting ? "" : undefined}
+                  data-ending-style={isEnding ? "" : undefined}
                   className={cn(
                     styles.popup,
-                    styles[`popup-${placement}`],
                     resolveClassName(className, state.isOpen),
                   )}
                   style={style}
@@ -322,13 +479,10 @@ function DrawerSwipeArea({ className, ...props }: DrawerSwipeAreaProps) {
 
   return (
     <div
-      className={cn(
-        styles.swipeArea,
-        styles[`swipeArea-${placement}`],
-        className,
-      )}
-      data-slot="drawer-swipe-area"
       {...props}
+      className={cn(styles.swipeArea, className)}
+      data-placement={placement}
+      data-slot="drawer-swipe-area"
     />
   );
 }
@@ -355,6 +509,7 @@ export type {
   DrawerPlacement,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSizing,
   DrawerSwipeAreaProps,
 } from "./drawer.types";
 export {

@@ -13,7 +13,7 @@ function ToastTrigger({
 }: {
   title: string;
   description?: string;
-  variant?: "success" | "error" | "loading";
+  variant?: "success" | "error" | "warning" | "info" | "loading" | "neutral";
   action?: { label: string; onPress: () => void };
 }) {
   const { toast } = useToastContext("ToastTrigger");
@@ -190,5 +190,217 @@ describe("Toast", () => {
     fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
 
     expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
+  });
+
+  it("stacks multiple visible toasts", () => {
+    function MultiToastTrigger() {
+      const { toast } = useToastContext("MultiToastTrigger");
+      return (
+        <Button
+          onClick={() => {
+            toast({ title: "First" });
+            toast({ title: "Second" });
+          }}
+        >
+          Show toasts
+        </Button>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <MultiToastTrigger />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
+
+    const region = document.querySelector("[data-toast-region]");
+    expect(region).toHaveAttribute("data-stacked");
+    expect(region).toHaveAttribute("data-count", "2");
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(2);
+  });
+
+  it("auto-dismisses toasts after the default timeout", () => {
+    vi.useFakeTimers();
+
+    render(
+      <ToastProvider>
+        <ToastTrigger title="Saved" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("renders status icons for semantic variants", () => {
+    render(
+      <ToastProvider>
+        <ToastTrigger title="Done" variant="success" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+
+    expect(
+      document.querySelector("[data-slot='toast-icon']"),
+    ).toBeInTheDocument();
+  });
+
+  it("defaults to a maximum of three visible toasts", () => {
+    function MultiToastTrigger() {
+      const { toast } = useToastContext("MultiToastTrigger");
+      return (
+        <Button
+          onClick={() => {
+            toast({ title: "First" });
+            toast({ title: "Second" });
+            toast({ title: "Third" });
+            toast({ title: "Fourth" });
+          }}
+        >
+          Show toasts
+        </Button>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <MultiToastTrigger />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
+
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(3);
+    expect(document.querySelector("[data-toast-region]")).toHaveAttribute(
+      "data-count",
+      "3",
+    );
+  });
+
+  it("defaults the region to top-right", () => {
+    render(
+      <ToastProvider>
+        <ToastTrigger title="Saved" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+
+    const region = document.querySelector("[data-toast-region]");
+    expect(region).toHaveAttribute("data-position", "top-right");
+  });
+
+  it("supports bottom stacking and wrapUpdate", () => {
+    const wrapUpdate = vi.fn((fn: () => void) => fn());
+
+    function MultiToastTrigger() {
+      const { toast } = useToastContext("MultiToastTrigger");
+      return (
+        <Button
+          onClick={() => {
+            toast({ title: "First", variant: "warning" });
+            toast({ title: "Second", variant: "info" });
+          }}
+        >
+          Show toasts
+        </Button>
+      );
+    }
+
+    render(
+      <ToastProvider
+        position="bottom-left"
+        wrapUpdate={wrapUpdate}
+        timeout={10_000}
+      >
+        <MultiToastTrigger />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
+
+    const region = document.querySelector("[data-toast-region]");
+    expect(region).toHaveAttribute("data-position", "bottom-left");
+    expect(region).toHaveAttribute("data-stacked");
+    expect(wrapUpdate).toHaveBeenCalled();
+    expect(document.querySelector('[data-variant="warning"]')).toBeTruthy();
+    expect(document.querySelector('[data-variant="info"]')).toBeTruthy();
+  });
+
+  it("closes the region after the last toast exits", () => {
+    vi.useFakeTimers();
+
+    render(
+      <ToastProvider timeout={100}>
+        <ToastTrigger title="Temporary" />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toast" }));
+    expect(document.querySelector("[data-toast-region]")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(
+      document.querySelector("[data-toast-region]"),
+    ).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("throws when toast parts are rendered outside Toast", async () => {
+    const { ToastContent } = await import("../index");
+    expect(() => render(<ToastContent>Orphan</ToastContent>)).toThrow(
+      /must be used within Toast/,
+    );
+  });
+
+  it("accepts a custom ToastRegion aria-label and expands on focus", async () => {
+    const { ToastRegion } = await import("../index");
+
+    function WithLabeledRegion() {
+      const { toast } = useToastContext("WithLabeledRegion");
+      return (
+        <>
+          <Button
+            onClick={() => {
+              toast({ title: "Alpha" });
+              toast({ title: "Beta" });
+            }}
+          >
+            Show toasts
+          </Button>
+          <ToastRegion aria-label="Notifications" />
+        </>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <WithLabeledRegion />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show toasts" }));
+
+    const labeled = screen.getByLabelText("Notifications");
+    expect(labeled).toBeInTheDocument();
+    labeled.focus();
+    fireEvent.focusIn(labeled);
+    // stacked + focus-within should expand the labeled region when supported
+    expect(labeled.getAttribute("data-stacked")).toBe("");
   });
 });

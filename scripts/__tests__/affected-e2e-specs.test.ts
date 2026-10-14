@@ -154,6 +154,37 @@ describe("resolveAffectedE2eSpecs", () => {
     });
   });
 
+  it("does not treat token or component unit tests as visual dependencies", () => {
+    expect(
+      resolveAffectedE2eSpecs([
+        "packages/tokens/src/__tests__/emit-css.test.ts",
+      ]),
+    ).toEqual({
+      mode: "none",
+      reason: "No visual-relevant file changes",
+    });
+
+    expect(
+      resolveAffectedE2eSpecs([
+        "packages/components/src/button/__tests__/Button.test.tsx",
+        "packages/tokens/src/__tests__/theme-draft.test.ts",
+      ]),
+    ).toEqual({
+      mode: "none",
+      reason: "No visual-relevant file changes",
+    });
+
+    expect(
+      resolveAffectedE2eSpecs([
+        "packages/tokens/src/__tests__/emit-css.test.ts",
+        "packages/components/src/toast/Toast.tsx",
+      ]),
+    ).toEqual({
+      mode: "specs",
+      specs: ["toast.spec.ts"],
+    });
+  });
+
   it("runs all specs when core or storybook infrastructure changes", () => {
     expect(resolveAffectedE2eSpecs(["packages/core/src/theme.ts"]).mode).toBe(
       "all",

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { profile } from "@/content/profile";
 import { useIde } from "@/state/IdeContext";
+import { answerFromPortfolio } from "./localAnswer";
 import styles from "./AgentWindow.module.scss";
 
 type UiMessage = {
@@ -24,29 +25,41 @@ const SUGGESTIONS = [
   "How can I contact you?",
 ];
 
+function agentChatUrl(): string {
+  const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+  return `${base}api/agent/chat`;
+}
+
+function lastUserContent(
+  messages: { role: "user" | "assistant"; content: string }[],
+): string {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = messages[i];
+    if (m?.role === "user") return m.content;
+  }
+  return "";
+}
+
 async function askAgent(
   messages: { role: "user" | "assistant"; content: string }[],
 ): Promise<string> {
-  const res = await fetch("/api/agent/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages }),
-  });
-  const data = (await res.json()) as {
-    reply?: string;
-    error?: string;
-    code?: string;
-  };
-  if (!res.ok) {
-    throw new Error(
-      data.error ??
-        (res.status === 503
-          ? "Set GROQ_API_KEY to enable the free agent."
-          : "Agent request failed"),
-    );
+  const question = lastUserContent(messages);
+  try {
+    const res = await fetch(agentChatUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+    });
+    const data = (await res.json()) as {
+      reply?: string;
+      error?: string;
+      code?: string;
+    };
+    if (res.ok && data.reply) return data.reply;
+  } catch {
+    // Static Cloudflare Pages has no Vite agent middleware — use local answers.
   }
-  if (!data.reply) throw new Error("Empty reply from agent");
-  return data.reply;
+  return answerFromPortfolio(question);
 }
 
 export function AgentWindow() {

@@ -1,0 +1,28 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.attendanceRow {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.sheetStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding-block-end: var(--space-2, 0.5rem);
+}
+
+.sheetCopy {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
+}
+
+.sheetError {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-danger, #c0392b);
+}

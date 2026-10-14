@@ -1,0 +1,37 @@
+.section {
+  padding-block: var(--lp-space-700) !important;
+}
+
+.actions {
+  margin-top: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.primary {
+  text-decoration: none;
+}
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 8px 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8f4ec;
+  text-decoration: none;
+  border-radius: 8px;
+  border: 1px solid rgb(248 244 236 / 28%);
+
+  &:hover {
+    background: rgb(248 244 236 / 8%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #f8f4ec;
+    outline-offset: 2px;
+  }
+}

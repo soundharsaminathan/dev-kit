@@ -55,7 +55,6 @@ Rules:
 - Role: ${profile.role}
 - Tagline: ${profile.tagline}
 - Email: ${profile.email}
-- GitHub: ${profile.github}
 - LinkedIn: ${profile.linkedin}
 - Location: ${profile.location}
 - Availability: ${profile.availability}

@@ -1,0 +1,4 @@
+# Cloudflare Pages project config (optional local wrangler pages deploy)
+name = "step-up"
+compatibility_date = "2026-07-01"
+pages_build_output_dir = "dist"

@@ -230,8 +230,8 @@ function DialogTitle({ className, ...props }: DialogTitleProps) {
 
   return (
     <h2
-      id={titleId}
       {...mergeProps(titlePropsRef.current, props)}
+      id={titleId}
       data-dialog-title=""
       className={cn(styles.title, className)}
     />

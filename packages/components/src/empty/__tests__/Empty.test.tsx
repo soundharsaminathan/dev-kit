@@ -18,7 +18,9 @@ describe("Empty", () => {
         <EmptyDescription>Try another search.</EmptyDescription>
       </Empty>,
     );
-    expect(screen.getByText("No results")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "No results" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Try another search.")).toBeInTheDocument();
   });
 

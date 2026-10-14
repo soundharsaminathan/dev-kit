@@ -10,7 +10,9 @@
     { "path": "./packages/core" },
     { "path": "./packages/components" },
     { "path": "./apps/storybook" },
-    { "path": "./apps/showcase" }
+    { "path": "./apps/showcase" },
+    { "path": "./apps/portfolio" },
+    { "path": "./apps/step-up" }
   ],
   "include": []
 }

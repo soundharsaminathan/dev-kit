@@ -19,3 +19,4 @@ export type {
   LabelProps,
   LegendProps,
 } from "./field.types";
+export { useFieldContext } from "./field-context";

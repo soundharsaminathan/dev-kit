@@ -91,6 +91,7 @@ import {
   PaperPlaneTiltIcon,
   PencilIcon,
   PencilSimpleLineIcon,
+  PhoneCallIcon,
   PlusIcon,
   PlusSquareIcon,
   PulseIcon,
@@ -124,6 +125,7 @@ import {
   TrayIcon,
   TrendUpIcon,
   UploadSimpleIcon,
+  UserCircleIcon,
   UserIcon,
   UsersIcon,
   WalletIcon,
@@ -267,6 +269,10 @@ const Circle = (
 const CircleDashed = (
   props: Omit<React.ComponentProps<typeof CircleDashedIcon>, "weight">,
 ) => <CircleDashedIcon weight="regular" {...props} />;
+
+const CircleUser = (
+  props: Omit<React.ComponentProps<typeof UserCircleIcon>, "weight">,
+) => <UserCircleIcon weight="regular" {...props} />;
 
 const Clipboard = (
   props: Omit<React.ComponentProps<typeof ClipboardIcon>, "weight">,
@@ -508,6 +514,10 @@ const PenSquare = (
   props: Omit<React.ComponentProps<typeof PencilSimpleLineIcon>, "weight">,
 ) => <PencilSimpleLineIcon weight="regular" {...props} />;
 
+const PhoneCall = (
+  props: Omit<React.ComponentProps<typeof PhoneCallIcon>, "weight">,
+) => <PhoneCallIcon weight="regular" {...props} />;
+
 const Pin = (
   props: Omit<React.ComponentProps<typeof PushPinIcon>, "weight">,
 ) => <PushPinIcon weight="regular" {...props} />;
@@ -708,6 +718,7 @@ const pack = {
     "chevrons-up-down": ChevronsUpDown,
     circle: Circle,
     "circle-dashed": CircleDashed,
+    "circle-user": CircleUser,
     clipboard: Clipboard,
     "clipboard-paste": ClipboardPaste,
     clock: Clock,
@@ -768,6 +779,7 @@ const pack = {
     "panel-left": PanelLeft,
     paperclip: Paperclip,
     "pen-square": PenSquare,
+    "phone-call": PhoneCall,
     pin: Pin,
     plus: Plus,
     "plus-square": PlusSquare,

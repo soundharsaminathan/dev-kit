@@ -1,0 +1,60 @@
+{
+  "name": "loan-mate",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/loan-mate",
+  "projectType": "application",
+  "tags": ["scope:loan-mate", "type:app"],
+  "implicitDependencies": ["components", "tokens"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/loan-mate",
+        "command": "tsc -b --pretty false"
+      },
+      "dependsOn": ["^typecheck", "tokens:build:tokens", "components:build"]
+    },
+    "dev": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev"
+      },
+      "continuous": true,
+      "dependsOn": ["tokens:build:tokens"]
+    },
+    "build": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "build"
+      },
+      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": [
+        "tokens:build:tokens",
+        "components:build",
+        "icons-packs:build"
+      ]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/loan-mate",
+        "command": "vitest run --config vitest.config.ts"
+      },
+      "dependsOn": ["tokens:build:tokens", "components:build"]
+    },
+    "test:e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/loan-mate",
+        "command": "playwright test --config playwright.config.ts"
+      }
+    },
+    "test:e2e:ui": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/loan-mate",
+        "command": "playwright test --config playwright.ui.config.ts"
+      }
+    }
+  }
+}

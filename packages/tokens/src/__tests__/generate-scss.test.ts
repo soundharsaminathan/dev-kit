@@ -66,4 +66,17 @@ describe("generateDefaultThemeSCSS", () => {
     expect(css).not.toContain("--font-serif:");
     expect(css).not.toContain("--font-mono:");
   });
+
+  it("does not duplicate the radius-factor variable when radiusFactor is undefined", () => {
+    const css = generateDefaultThemeSCSS(
+      resolveTheme({
+        id: "no-radius",
+        label: "No Radius",
+        color: builtInThemes.default.color!,
+      }),
+    );
+
+    const matches = css.match(/--radius-factor:/g) ?? [];
+    expect(matches).toHaveLength(1);
+  });
 });

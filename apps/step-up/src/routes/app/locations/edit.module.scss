@@ -1,0 +1,21 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.skeleton {
+  display: grid;
+  gap: var(--space-4, 1rem);
+}
+
+.skeletonMain,
+.skeletonRail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  min-width: 0;
+}
+
+@media (min-width: 1080px) {
+  .skeleton {
+    grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.9fr);
+    align-items: start;
+  }
+}

@@ -1,0 +1,155 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.skeletonBanner {
+  align-self: stretch;
+  width: auto;
+  margin-inline: calc(-1 * var(--space-4, 1rem));
+  margin-block-start: calc(-1 * var(--space-3, 0.75rem));
+}
+
+@media (min-width: 768px) {
+  .skeletonBanner {
+    margin-inline: calc(-1 * var(--space-6, 1.5rem));
+  }
+}
+
+.skeletonRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding-inline: var(--space-1, 0.25rem);
+}
+
+.sectionLabel {
+  margin: 0;
+  padding-inline: var(--space-1, 0.25rem);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.sectionHeading .sectionLabel {
+  padding-inline: 0;
+}
+
+.ratePrompt {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 72px;
+  padding: var(--space-4, 16px);
+  border: 0;
+  border-radius: var(--radius-2xl, 20px);
+  background: var(--hero-gradient, var(--color-primary));
+  color: var(--color-fg-on-primary);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-md, 0 8px 20px rgb(0 0 0 / 8%));
+
+  strong {
+    font-size: 1.125rem;
+    letter-spacing: -0.02em;
+  }
+
+  span {
+    font-size: 0.875rem;
+    color: color-mix(in srgb, var(--color-fg-on-primary) 80%, transparent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: transform var(--motion-fast, 140ms) ease;
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+.rateKicker {
+  font-size: 0.75rem !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sectionLink {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-primary);
+  text-decoration: none;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.goalSheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding-block: var(--space-2, 0.5rem);
+}
+
+.goalOptions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.goalOption {
+  min-height: 2.75rem;
+  border-radius: var(--radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--card-background, var(--color-card));
+  color: var(--color-fg);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.goalOption[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.madeWith {
+  margin: 0;
+  padding-block: var(--space-4, 1rem) var(--space-2, 0.5rem);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  align-self: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--color-fg) 48%, transparent);
+}
+
+.madeWithHeart {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--color-danger);
+  flex-shrink: 0;
+  fill: currentColor;
+}

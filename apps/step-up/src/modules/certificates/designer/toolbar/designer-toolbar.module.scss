@@ -1,0 +1,180 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  padding: 6px 8px 4px;
+  background: var(--color-card);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
+  border-radius: 8px;
+}
+
+.ribbonGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px 4px;
+  border-right: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
+  min-height: 64px;
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.ribbonControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.ribbonLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+  text-transform: capitalize;
+  line-height: 1;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-fg);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-fg) 18%, transparent);
+  }
+
+  &[data-active="true"] {
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+    color: var(--color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.btnCluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 18%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+}
+
+.textBtn {
+  border: 1px solid color-mix(in srgb, var(--color-fg) 18%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-fg);
+  cursor: pointer;
+  min-height: 28px;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  }
+}
+
+.fontSelect,
+.sizeSelect {
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 18%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-fg);
+  padding: 0 6px;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.fontSelect {
+  max-width: 160px;
+  min-width: 128px;
+}
+
+.sizeSelect {
+  width: 58px;
+}
+
+.colorWrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-fg) 18%, transparent);
+  }
+}
+
+.colorLetter {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-fg);
+}
+
+.colorBar {
+  display: block;
+  width: 16px;
+  height: 3px;
+  margin-top: 2px;
+  border-radius: 1px;
+}
+
+.colorInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.zoomLabel {
+  min-width: 42px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-fg) 78%, transparent);
+}

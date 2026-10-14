@@ -1,0 +1,350 @@
+import { Checkbox } from "@dev-ui/components/checkbox";
+import { useToastContext } from "@dev-ui/components/toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
+import { useStudioId } from "@/lib/use-studio-id";
+import { AppSheet } from "@/modules/ui/app-sheet";
+import { FormInput } from "@/modules/ui/form-input";
+import { SkeletonBlock } from "@/modules/ui/skeleton-block";
+import staff from "@/modules/ui/staff.module.scss";
+import { EmptyState, ErrorState } from "@/modules/ui/states";
+import { TouchButton } from "@/modules/ui/touch-button";
+import { invoicesCoverMultiplePeople } from "./family-combine";
+import {
+  allocateFamilyDiscount,
+  formatPrice,
+  type Invoice,
+  invoiceTilePeriodLabel,
+  type StudioFamily,
+} from "./invoice-types";
+import { parseDiscountInput } from "./print-invoice";
+
+type FamilyCombineSheetProps = {
+  family: StudioFamily | null;
+  invoices: Invoice[];
+  onOpenChange: (open: boolean) => void;
+  onCombined: (invoice: Invoice) => void;
+  /** When set, opens with these invoices checked (e.g. the one staff tapped). */
+  preselectedInvoiceIds?: string[];
+  /** Pay a single selected invoice without combining (optional family discount ignored). */
+  onPaySingle?: (invoice: Invoice) => void;
+};
+
+function isUnpaid(status: Invoice["status"]) {
+  return status === "PENDING" || status === "OVERDUE";
+}
+
+export function FamilyCombineSheet({
+  family,
+  invoices,
+  onOpenChange,
+  onCombined,
+  preselectedInvoiceIds,
+  onPaySingle,
+}: FamilyCombineSheetProps) {
+  const api = useApi();
+  const studioId = useStudioId();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("FamilyCombineSheet");
+
+  const isOpen = Boolean(family);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [familyDiscount, setFamilyDiscount] = useState("");
+  const familyKey = family?.ownerId ?? null;
+  const preselectKey = (preselectedInvoiceIds ?? []).join(",");
+  const [lastResetKey, setLastResetKey] = useState(
+    () => `${familyKey ?? ""}:${preselectKey}`,
+  );
+  const resetKey = `${familyKey ?? ""}:${preselectKey}`;
+  if (resetKey !== lastResetKey) {
+    setLastResetKey(resetKey);
+    setSelectedIds(preselectedInvoiceIds ?? []);
+    setFamilyDiscount("");
+  }
+
+  const memberIds = useMemo(() => {
+    if (!family) return new Set<string>();
+    const ids = new Set<string>([family.ownerId]);
+    for (const member of family.members) {
+      ids.add(member.id);
+    }
+    return ids;
+  }, [family]);
+  const memberIdList = useMemo(() => {
+    if (!family) return [];
+    // Members are oldest-first. Keep the owner and the newest links so a
+    // household that accumulated test kids still includes the ones just added.
+    const newestFirst = family.members.map((member) => member.id).reverse();
+    return [family.ownerId, ...newestFirst].slice(0, 200);
+  }, [family]);
+
+  // The studio invoice list is the whole history. A large studio has not
+  // finished loading when this sheet opens, so fetch this household directly.
+  const householdInvoices = useQuery({
+    queryKey: ["invoices", "household", studioId, memberIdList],
+    enabled: isOpen && memberIdList.length > 0,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: "50",
+        studentIds: memberIdList.join(","),
+      });
+      const data = await api.get<
+        | Invoice[]
+        | { items: Invoice[]; nextCursor: string | null; limit: number }
+      >(`/billing/studio/${studioId}?${params.toString()}`);
+      return unwrapPage(data);
+    },
+  });
+
+  const sourceInvoices = householdInvoices.data ?? invoices;
+
+  const unpaid = useMemo(
+    () =>
+      sourceInvoices.filter(
+        (invoice) =>
+          isUnpaid(invoice.status) &&
+          invoice.kind !== "COMBINED" &&
+          !invoice.combineMeta &&
+          memberIds.has(invoice.studentId),
+      ),
+    [sourceInvoices, memberIds],
+  );
+
+  const selected = unpaid.filter((invoice) => selectedIds.includes(invoice.id));
+  const showFamilyDiscount = invoicesCoverMultiplePeople(selected);
+  const subtotal = selected.reduce((sum, invoice) => sum + invoice.amount, 0);
+  const discountValue = showFamilyDiscount
+    ? parseDiscountInput(familyDiscount)
+    : 0;
+  const discountValid =
+    !Number.isNaN(discountValue) &&
+    discountValue >= 0 &&
+    discountValue <= subtotal;
+
+  const allocations = useMemo(() => {
+    if (!discountValid || selected.length === 0) return [];
+    try {
+      const shares = allocateFamilyDiscount(
+        selected.map((invoice) => invoice.amount),
+        discountValue,
+      );
+      return selected.map((invoice, index) => ({
+        invoice,
+        discount: shares[index]!,
+        net: Math.round((invoice.amount - shares[index]!) * 100) / 100,
+      }));
+    } catch {
+      return [];
+    }
+  }, [selected, discountValid, discountValue]);
+
+  const netDue = discountValid
+    ? Math.round((subtotal - discountValue) * 100) / 100
+    : null;
+
+  const canCombine =
+    invoicesCoverMultiplePeople(selected) &&
+    discountValid &&
+    netDue != null &&
+    netDue >= 0;
+  const canPaySingle =
+    Boolean(onPaySingle) && selected.length === 1 && discountValid;
+
+  const combine = useMutation({
+    mutationFn: () => {
+      if (!family || !canCombine) {
+        throw new Error("Select at least two invoices and a valid discount.");
+      }
+      return api.post<Invoice>("/billing/family-combine", {
+        studioId,
+        purchaserUserId: family.ownerId,
+        invoiceIds: selected.map((invoice) => invoice.id),
+        familyDiscount: discountValue,
+      });
+    },
+    onSuccess: (invoice) => {
+      void queryClient.invalidateQueries({ queryKey: ["invoices", studioId] });
+      toast({
+        title: "Invoices combined",
+        description: "Collect payment on the combined invoice.",
+        variant: "success",
+      });
+      onOpenChange(false);
+      onCombined(invoice);
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Couldn’t combine invoices",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
+    },
+  });
+
+  function toggleInvoice(invoiceId: string, selectedNext: boolean) {
+    setSelectedIds((current) =>
+      selectedNext
+        ? current.includes(invoiceId)
+          ? current
+          : [...current, invoiceId]
+        : current.filter((id) => id !== invoiceId),
+    );
+  }
+
+  function submit() {
+    if (canPaySingle && selected[0] && onPaySingle) {
+      onOpenChange(false);
+      onPaySingle(selected[0]);
+      return;
+    }
+    if (canCombine) {
+      combine.mutate();
+    }
+  }
+
+  const confirmLabel =
+    canPaySingle && selected[0]
+      ? `Collect payment · ${formatPrice(selected[0].amount)}`
+      : netDue != null && invoicesCoverMultiplePeople(selected)
+        ? `Combine · ${formatPrice(netDue)}`
+        : selected.length >= 2
+          ? "Select more than one person"
+          : "Select invoices";
+
+  return (
+    <AppSheet
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onOpenChange(false);
+      }}
+      title={
+        family
+          ? `Collect payment · ${family.ownerName}’s family`
+          : "Collect payment"
+      }
+      size="tall"
+    >
+      {family ? (
+        <div className={staff.sheetStack}>
+          <p className={staff.rowMeta}>
+            Select unpaid household invoices to collect together. Family
+            discount applies when more than one person is included. Or pay a
+            single invoice on its own.
+          </p>
+
+          {householdInvoices.isLoading && unpaid.length === 0 ? (
+            <SkeletonBlock height="6rem" radius="var(--radius-2xl)" />
+          ) : unpaid.length === 0 ? (
+            <EmptyState
+              title="No unpaid invoices"
+              description="Household members need unpaid individual invoices before you can combine."
+            />
+          ) : (
+            <div className={staff.list}>
+              {unpaid.map((invoice) => {
+                const checked = selectedIds.includes(invoice.id);
+                return (
+                  <div
+                    key={invoice.id}
+                    className={staff.rowCard}
+                    data-testid={`combine-invoice-${invoice.id}`}
+                  >
+                    <div className={staff.attentionTop}>
+                      <span className={staff.rowTitle}>
+                        {invoice.student?.name ?? invoice.studentId}
+                      </span>
+                      <span className={staff.rowMeta}>
+                        {formatPrice(invoice.amount)}
+                      </span>
+                    </div>
+                    <p
+                      className={staff.rowMeta}
+                      data-testid={`combine-invoice-period-${invoice.id}`}
+                    >
+                      {[
+                        invoiceTilePeriodLabel(invoice),
+                        invoice.batchName,
+                        invoice.status,
+                        invoice.chargeType === "PREPAID_PRORATED" &&
+                        invoice.attendedSessionCount != null &&
+                        invoice.billedSessionCount != null
+                          ? `${invoice.attendedSessionCount} / ${invoice.billedSessionCount} remaining`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    <Checkbox
+                      isSelected={checked}
+                      onChange={(value) => toggleInvoice(invoice.id, value)}
+                    >
+                      Include in combined invoice
+                    </Checkbox>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {showFamilyDiscount ? (
+            <FormInput
+              label="Family discount"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="decimal"
+              data-testid="family-combine-discount"
+              value={familyDiscount}
+              onChange={setFamilyDiscount}
+              placeholder="0"
+            />
+          ) : null}
+
+          {showFamilyDiscount && allocations.length > 0 ? (
+            <div className={staff.list}>
+              {allocations.map((row) => (
+                <p key={row.invoice.id} className={staff.rowMeta}>
+                  {row.invoice.student?.name ?? row.invoice.studentId}: −
+                  {formatPrice(row.discount)} → {formatPrice(row.net)}
+                </p>
+              ))}
+            </div>
+          ) : null}
+
+          <p className={staff.rowMeta}>
+            {selected.length} selected · Subtotal {formatPrice(subtotal)}
+            {netDue != null && invoicesCoverMultiplePeople(selected)
+              ? ` · Net ${formatPrice(netDue)}`
+              : ""}
+          </p>
+
+          {combine.isError ? (
+            <ErrorState
+              description={
+                combine.error instanceof Error
+                  ? combine.error.message
+                  : "Combine failed."
+              }
+            />
+          ) : null}
+
+          <div className={staff.sheetActions}>
+            <TouchButton
+              variant="primary"
+              fullWidth
+              isDisabled={!canCombine && !canPaySingle}
+              isPending={combine.isPending}
+              data-testid="confirm-family-combine"
+              onClick={submit}
+            >
+              {confirmLabel}
+            </TouchButton>
+          </div>
+        </div>
+      ) : null}
+    </AppSheet>
+  );
+}

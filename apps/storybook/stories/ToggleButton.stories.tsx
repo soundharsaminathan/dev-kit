@@ -8,7 +8,7 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "primary", "quiet"],
+      options: ["default", "primary", "quiet", "segmented"],
     },
     size: {
       control: "select",
@@ -42,6 +42,12 @@ export const Primary: Story = {
 export const Quiet: Story = {
   args: {
     variant: "quiet",
+  },
+};
+
+export const Segmented: Story = {
+  args: {
+    variant: "segmented",
   },
 };
 

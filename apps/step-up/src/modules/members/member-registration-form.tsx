@@ -1,0 +1,486 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
+import { useToastContext } from "@dev-ui/components/toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useApi } from "@/lib/api-context";
+import { unwrapPage } from "@/lib/api-page";
+import type { AgeRange, Gender } from "@/lib/constants";
+import { setLastLoginIdentifier } from "@/lib/last-login";
+import { useStudioId } from "@/lib/use-studio-id";
+import { AGE_RANGES, GENDERS } from "@/modules/onboarding/options";
+import { StyleSpreePicker } from "@/modules/styles/style-spree-picker";
+import {
+  DateOfBirthOrAgeFields,
+  hasAgeValue,
+  resolveAgePayload,
+} from "@/modules/ui/date-of-birth-or-age";
+import { FormInput } from "@/modules/ui/form-input";
+import { Screen } from "@/modules/ui/screen";
+import staff from "@/modules/ui/staff.module.scss";
+import { StickyCtaBar, TouchButton } from "@/modules/ui/touch-button";
+import formStyles from "./member-registration-form.module.scss";
+import { TemporaryCredentialsPanel } from "./temporary-credentials-panel";
+
+const STEPS = ["Details", "Dance styles"] as const;
+const NO_BATCH = "__none__";
+
+type MemberRegistrationFormProps = {
+  kind: "trainer" | "student";
+  title: string;
+  backTo: string;
+  successTo: string;
+  createEndpoint: string;
+  createLabel: string;
+  stylesTitle: string;
+  stylesSummaryLabel: string;
+  stepSubtitles: [string, string];
+};
+
+type CreatedMember = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  temporaryPassword?: string | null;
+  setupHint?: string | null;
+};
+
+type StudioBatchOption = {
+  id: string;
+  name: string;
+  active: boolean;
+};
+
+function generateTemporaryPassword() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  let value = "Su-";
+  for (const byte of bytes) {
+    value += alphabet[byte % alphabet.length];
+  }
+  return value;
+}
+
+export function MemberRegistrationForm({
+  kind,
+  title,
+  backTo,
+  successTo,
+  createEndpoint,
+  createLabel,
+  stylesTitle,
+  stylesSummaryLabel,
+  stepSubtitles,
+}: MemberRegistrationFormProps) {
+  const api = useApi();
+  const studioId = useStudioId();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("MemberRegistrationForm");
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [gender, setGender] = useState<Gender | null>(null);
+  const [ageRange, setAgeRange] = useState<AgeRange | null>(null);
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [age, setAge] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [alternateMobile, setAlternateMobile] = useState("");
+  const [styles, setStyles] = useState<string[]>([]);
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [temporaryPassword] = useState(() => generateTemporaryPassword());
+  const [createdResult, setCreatedResult] = useState<CreatedMember | null>(
+    null,
+  );
+
+  const allowBatchEnrollment = kind === "student";
+  const issueLoginCredentials = true;
+  const kindLabel = kind === "trainer" ? "Trainer" : "Student";
+  const accessLabel = kind === "trainer" ? "Trainer access" : "Student access";
+  const appLabel = kind === "trainer" ? "studio app" : "member app";
+
+  const batchesQuery = useQuery({
+    queryKey: ["studio-batches", studioId, "active"],
+    queryFn: async () => {
+      const data = await api.get<
+        | StudioBatchOption[]
+        | {
+            items: StudioBatchOption[];
+            nextCursor: string | null;
+            limit: number;
+          }
+      >(`/batches/studio/${studioId}?activeOnly=true&recent=true&limit=50`);
+      return unwrapPage(data);
+    },
+    enabled: allowBatchEnrollment,
+  });
+
+  const activeBatches = useMemo(
+    () => (batchesQuery.data ?? []).filter((batch) => batch.active),
+    [batchesQuery.data],
+  );
+
+  const stepIsValid = useMemo(
+    () => [
+      Boolean(
+        name.trim() &&
+          email.trim() &&
+          gender &&
+          (kind === "trainer"
+            ? Boolean(ageRange)
+            : hasAgeValue({ dateOfBirth, age })),
+      ),
+      styles.length > 0,
+    ],
+    [age, ageRange, dateOfBirth, email, gender, kind, name, styles.length],
+  );
+
+  const createMember = useMutation({
+    mutationFn: () =>
+      api.post<CreatedMember>(createEndpoint, {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        gender,
+        ...(kind === "student"
+          ? {
+              ...resolveAgePayload({ dateOfBirth, age }),
+              ...(guardianName.trim()
+                ? { guardianName: guardianName.trim() }
+                : {}),
+              ...(alternateMobile.trim()
+                ? { alternateMobile: alternateMobile.trim() }
+                : {}),
+            }
+          : { ageRange }),
+        styles,
+        ...(allowBatchEnrollment && batchId ? { batchId } : {}),
+        ...(issueLoginCredentials
+          ? { temporaryPassword: temporaryPassword.trim() }
+          : {}),
+      }),
+    onSuccess: async (created) => {
+      setLastLoginIdentifier(created.email);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["studio-members", studioId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-funnel", studioId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["student-directory", studioId],
+        }),
+        batchId
+          ? queryClient.invalidateQueries({ queryKey: ["batch", batchId] })
+          : Promise.resolve(),
+      ]);
+
+      if (issueLoginCredentials && created.temporaryPassword) {
+        setCreatedResult(created);
+        toast({
+          title: `${kindLabel} created`,
+          description: "Share the temporary password shown once below.",
+          variant: "success",
+        });
+        return;
+      }
+
+      toast({
+        title: `${kindLabel} created`,
+        description: `${created.name} was added to the studio.`,
+        variant: "success",
+      });
+      await navigate({ to: successTo });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: `Couldn’t create ${kind}`,
+        description:
+          error instanceof Error
+            ? error.message
+            : `The ${kind} could not be created.`,
+        variant: "error",
+      });
+    },
+  });
+
+  async function copyText(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({
+        title: `${label} copied`,
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: `Couldn’t copy ${label.toLowerCase()}`,
+        variant: "error",
+      });
+    }
+  }
+
+  function handleBack() {
+    if (step > 0) {
+      setStep(step - 1);
+      return;
+    }
+    void navigate({ to: backTo });
+  }
+
+  if (createdResult) {
+    const passwordToShare =
+      createdResult.temporaryPassword ?? temporaryPassword;
+    return (
+      <>
+        <Screen
+          title={`${kindLabel} ready`}
+          subtitle="Share these credentials — they’ll change the password on first login."
+          showBack={false}
+          paddedCta
+        >
+          <div className={staff.softPanel}>
+            <TemporaryCredentialsPanel
+              email={createdResult.email}
+              temporaryPassword={passwordToShare}
+              eyebrow={accessLabel}
+              helpText={`This password is shown once here. The ${kind} must set a new password before using the ${appLabel}.`}
+              onCopy={(label, value) => void copyText(label, value)}
+            />
+          </div>
+        </Screen>
+
+        <StickyCtaBar>
+          <TouchButton
+            variant="primary"
+            fullWidth
+            data-testid={`${kind}-credentials-done`}
+            onClick={() => void navigate({ to: successTo })}
+          >
+            Done
+          </TouchButton>
+        </StickyCtaBar>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Screen
+        title={title}
+        subtitle={stepSubtitles[step]}
+        showBack
+        onBack={handleBack}
+        paddedCta
+      >
+        <div className={formStyles.steps} aria-hidden>
+          {STEPS.map((label, index) => (
+            <div
+              key={label}
+              className={`${formStyles.step} ${
+                index === step
+                  ? formStyles.stepActive
+                  : index < step
+                    ? formStyles.stepComplete
+                    : ""
+              }`}
+            />
+          ))}
+        </div>
+        <p className={formStyles.stepLabel}>
+          Step {step + 1} of {STEPS.length} · {STEPS[step]}
+        </p>
+
+        {step === 0 ? (
+          <div className={staff.softPanel}>
+            <FormInput
+              label="Name"
+              name="student-name"
+              autoComplete="off"
+              value={name}
+              onChange={setName}
+              required
+            />
+            <FormInput
+              label="Email"
+              name="student-email"
+              type="email"
+              autoComplete="off"
+              value={email}
+              onChange={setEmail}
+              required
+            />
+            <FormInput
+              label="Mobile number"
+              type="tel"
+              value={phone}
+              onChange={setPhone}
+            />
+            <div className={formStyles.fieldBlock}>
+              <p className={formStyles.fieldLabel}>
+                Gender{" "}
+                <span className={formStyles.required} aria-hidden="true">
+                  *
+                </span>
+              </p>
+              <div className={formStyles.chipGrid}>
+                {GENDERS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={formStyles.chip}
+                    data-selected={gender === option.id ? "true" : undefined}
+                    onClick={() => setGender(option.id)}
+                  >
+                    {option.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {kind === "student" ? (
+              <>
+                <div className={formStyles.fieldBlock}>
+                  <DateOfBirthOrAgeFields
+                    dateOfBirth={dateOfBirth}
+                    onDateOfBirthChange={setDateOfBirth}
+                    age={age}
+                    onAgeChange={setAge}
+                    required
+                  />
+                </div>
+                <FormInput
+                  label="Guardian name"
+                  value={guardianName}
+                  onChange={setGuardianName}
+                  autoComplete="off"
+                />
+                <FormInput
+                  label="Alternate mobile number"
+                  type="tel"
+                  value={alternateMobile}
+                  onChange={setAlternateMobile}
+                />
+              </>
+            ) : (
+              <div className={formStyles.fieldBlock}>
+                <p className={formStyles.fieldLabel}>Age range</p>
+                <div className={formStyles.chipGrid}>
+                  {AGE_RANGES.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={formStyles.chip}
+                      data-selected={
+                        ageRange === option.id ? "true" : undefined
+                      }
+                      onClick={() => setAgeRange(option.id)}
+                    >
+                      {option.label} · {option.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className={`${staff.softPanel} ${formStyles.stylesPanel}`}>
+            <StyleSpreePicker
+              value={styles}
+              onChange={setStyles}
+              title={stylesTitle}
+              summaryLabel={stylesSummaryLabel}
+              required
+            />
+            {allowBatchEnrollment ? (
+              <div
+                className={formStyles.batchField}
+                data-testid="optional-batch-enrollment"
+              >
+                <Select
+                  label="Enroll in batch (optional)"
+                  placeholder={
+                    batchesQuery.isLoading
+                      ? "Loading batches…"
+                      : "Don't enroll yet"
+                  }
+                  selectedKey={batchId ?? NO_BATCH}
+                  onSelectionChange={(key) => {
+                    const value = String(key);
+                    const nextBatchId = value === NO_BATCH ? null : value;
+                    setBatchId(nextBatchId);
+                  }}
+                >
+                  <SelectTrigger data-testid="optional-batch-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem id={NO_BATCH} textValue="Don't enroll yet">
+                      Don't enroll yet
+                    </SelectItem>
+                    {activeBatches.map((batch) => (
+                      <SelectItem
+                        key={batch.id}
+                        id={batch.id}
+                        textValue={batch.name}
+                      >
+                        {batch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className={formStyles.batchHint}>
+                  Skip this to leave the student in Signed in only.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {createMember.isError ? (
+          <p className={formStyles.error}>
+            {createMember.error instanceof Error
+              ? createMember.error.message
+              : `The ${kind} could not be created.`}
+          </p>
+        ) : null}
+      </Screen>
+
+      <StickyCtaBar
+        secondary={
+          <TouchButton variant="quiet" fullWidth onClick={handleBack}>
+            {step > 0 ? "Back" : "Cancel"}
+          </TouchButton>
+        }
+      >
+        {step < STEPS.length - 1 ? (
+          <TouchButton
+            variant="primary"
+            fullWidth
+            onClick={() => setStep(step + 1)}
+            isDisabled={!stepIsValid[step]}
+          >
+            Continue
+          </TouchButton>
+        ) : (
+          <TouchButton
+            variant="primary"
+            fullWidth
+            onClick={() => createMember.mutate()}
+            isPending={createMember.isPending}
+            isDisabled={!stepIsValid[step]}
+          >
+            {createLabel}
+          </TouchButton>
+        )}
+      </StickyCtaBar>
+    </>
+  );
+}

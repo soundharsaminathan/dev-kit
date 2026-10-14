@@ -1,0 +1,6 @@
+-- AlterEnum
+ALTER TYPE "NotificationType" ADD VALUE 'PAYMENT_RECEIVED';
+
+-- AlterTable
+ALTER TABLE "Invoice" ADD COLUMN "referralDiscount" DECIMAL(10,2) NOT NULL DEFAULT 0;
+ALTER TABLE "Invoice" ADD COLUMN "studioDiscount" DECIMAL(10,2) NOT NULL DEFAULT 0;

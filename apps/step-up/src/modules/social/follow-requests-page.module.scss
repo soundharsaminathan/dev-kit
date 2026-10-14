@@ -1,0 +1,67 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.description {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  list-style: none;
+}
+
+.requestRow {
+  display: flex;
+  min-height: 4.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-xl, 1rem);
+  background: var(--card-background, var(--color-card));
+  box-shadow: var(--shadow-sm);
+}
+
+.requestPerson {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}
+
+.requestName {
+  overflow: hidden;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.requestActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-2, 0.5rem);
+}
+
+@media (max-width: 389px) {
+  .requestRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .requestActions {
+    width: 100%;
+  }
+}

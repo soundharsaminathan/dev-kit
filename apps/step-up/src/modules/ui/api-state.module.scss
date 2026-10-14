@@ -1,0 +1,17 @@
+.loading {
+  display: grid;
+  place-items: center;
+  padding-block: 3rem;
+}
+
+.compactLoading {
+  display: flex;
+  align-items: center;
+  min-height: 2.4rem;
+}
+
+.compactSkeleton {
+  width: 2.5rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+}

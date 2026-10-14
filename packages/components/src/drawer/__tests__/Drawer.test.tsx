@@ -26,8 +26,25 @@ function getBackdrop() {
     ?.querySelector('[class*="backdrop"]');
 }
 
+function getOverlay() {
+  const drawer = document.querySelector("[data-drawer]");
+  return drawer?.closest('[class*="overlay"]') as HTMLElement | null;
+}
+
 function getDrawerPanel() {
   return document.querySelector("[data-drawer]") as HTMLElement | null;
+}
+
+function finishDrawerExit() {
+  const panel = getDrawerPanel();
+  if (panel) {
+    act(() => {
+      fireEvent.transitionEnd(panel, {
+        propertyName: "transform",
+        bubbles: true,
+      });
+    });
+  }
 }
 
 function swipeDrawer(
@@ -108,6 +125,11 @@ describe("Drawer", () => {
       "data-orientation",
       "horizontal",
     );
+    expect(getDrawerPanel()).toHaveAttribute("data-placement", "bottom");
+    expect(getDrawerPanel()?.parentElement).toHaveAttribute(
+      "data-placement",
+      "bottom",
+    );
   });
 
   it("orients the handle for side placements", () => {
@@ -158,6 +180,26 @@ describe("Drawer", () => {
     );
   });
 
+  it("defaults side drawers to static sizing", () => {
+    render(
+      <Drawer defaultOpen placement="right">
+        <p>Drawer content</p>
+      </Drawer>,
+    );
+
+    expect(getDrawerPanel()).toHaveAttribute("data-sizing", "static");
+  });
+
+  it("hugs content when sizing is dynamic", () => {
+    render(
+      <Drawer defaultOpen placement="right" sizing="dynamic">
+        <p>Drawer content</p>
+      </Drawer>,
+    );
+
+    expect(getDrawerPanel()).toHaveAttribute("data-sizing", "dynamic");
+  });
+
   it("renders auxiliary drawer primitives", () => {
     render(
       <DrawerProvider>
@@ -173,6 +215,10 @@ describe("Drawer", () => {
     expect(screen.getByTestId("drawer-swipe-area")).toHaveAttribute(
       "data-slot",
       "drawer-swipe-area",
+    );
+    expect(screen.getByTestId("drawer-swipe-area")).toHaveAttribute(
+      "data-placement",
+      "top",
     );
     expect(screen.getByTestId("drawer-indent")).toBeInTheDocument();
     expect(screen.getByTestId("drawer-indent-background")).toBeInTheDocument();
@@ -190,6 +236,7 @@ describe("Drawer", () => {
     const backdrop = getBackdrop();
     expect(backdrop).toBeTruthy();
     fireEvent.click(backdrop!);
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -202,6 +249,7 @@ describe("Drawer", () => {
     );
 
     fireEvent.click(screen.getAllByRole("button", { name: "Dismiss" })[0]!);
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -217,6 +265,7 @@ describe("Drawer", () => {
       getDrawerPanel()?.focus();
     });
     fireEvent.keyDown(getDrawerPanel()!, { key: "Escape", code: "Escape" });
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -261,6 +310,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("bottom");
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -273,6 +323,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("top");
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
   });
@@ -285,6 +336,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("left");
+    finishDrawerExit();
 
     expect(screen.queryByText("Left drawer")).not.toBeInTheDocument();
   });
@@ -297,6 +349,7 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("right");
+    finishDrawerExit();
 
     expect(screen.queryByText("Right drawer")).not.toBeInTheDocument();
   });
@@ -359,8 +412,56 @@ describe("Drawer", () => {
     );
 
     swipeDrawer("bottom", 120, screen.getByTestId("drawer-handle"));
+    finishDrawerExit();
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
+  });
+
+  it("does not capture pointer events on form inputs", () => {
+    render(
+      <Drawer defaultOpen placement="bottom">
+        <label htmlFor="referral-discount">Referral discount</label>
+        <input id="referral-discount" data-testid="referral-discount" />
+      </Drawer>,
+    );
+
+    const input = screen.getByTestId("referral-discount");
+    const pointerDown = new MouseEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: 200,
+      clientY: 200,
+    });
+    Object.defineProperty(pointerDown, "pointerId", { value: 1 });
+    Object.defineProperty(pointerDown, "pointerType", { value: "touch" });
+    Object.defineProperty(pointerDown, "pageX", { value: 200 });
+    Object.defineProperty(pointerDown, "pageY", { value: 200 });
+
+    act(() => {
+      input.dispatchEvent(pointerDown);
+    });
+
+    expect(pointerDown.defaultPrevented).toBe(false);
+    expect(getDrawerPanel()).not.toHaveAttribute("data-swiping");
+
+    act(() => {
+      input.focus();
+    });
+    expect(input).toHaveFocus();
+  });
+
+  it("does not dismiss when swiping starts on a form input", () => {
+    render(
+      <Drawer defaultOpen placement="bottom">
+        <input data-testid="studio-discount" />
+      </Drawer>,
+    );
+
+    swipeDrawer("bottom", 120, screen.getByTestId("studio-discount"));
+    finishDrawerExit();
+
+    expect(screen.getByTestId("studio-discount")).toBeInTheDocument();
   });
 
   it("opens when controlled isOpen becomes true", () => {
@@ -466,6 +567,29 @@ describe("Drawer", () => {
     });
   });
 
+  it("applies ending style while closing", async () => {
+    render(
+      <Drawer defaultOpen>
+        <p>Drawer content</p>
+      </Drawer>,
+    );
+
+    const backdrop = getBackdrop();
+    expect(backdrop).toBeTruthy();
+    fireEvent.click(backdrop!);
+
+    const panel = getDrawerPanel();
+    const overlay = getOverlay();
+    expect(panel).toHaveAttribute("data-ending-style", "");
+    expect(overlay).toHaveAttribute("data-ending-style", "");
+
+    finishDrawerExit();
+
+    await waitFor(() => {
+      expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
+    });
+  });
+
   it("focuses nested dialog content when present", async () => {
     render(
       <Drawer defaultOpen isDismissable={false}>
@@ -480,6 +604,49 @@ describe("Drawer", () => {
         screen.getByRole("dialog", { name: "Nested dialog" }),
       ).toHaveFocus();
     });
+  });
+
+  it("focuses the drawer panel when opened without a nested dialog", async () => {
+    function ControlledDrawer() {
+      const [open, setOpen] = useState(false);
+
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open drawer
+          </button>
+          <Drawer isOpen={open} onOpenChange={setOpen} isDismissable={false}>
+            <p>Drawer content</p>
+          </Drawer>
+        </>
+      );
+    }
+
+    render(<ControlledDrawer />);
+    fireEvent.click(screen.getByRole("button", { name: "Open drawer" }));
+
+    await waitFor(() => {
+      expect(getDrawerPanel()).toHaveFocus();
+    });
+  });
+
+  it("does not steal focus when the drawer already contains focus", async () => {
+    render(
+      <Drawer defaultOpen isDismissable={false}>
+        <button type="button">Inside action</button>
+      </Drawer>,
+    );
+
+    const action = screen.getByRole("button", { name: "Inside action" });
+    act(() => {
+      action.focus();
+    });
+
+    await waitFor(() => {
+      expect(action).toHaveFocus();
+    });
+
+    expect(action).toHaveFocus();
   });
 
   it("opens from a parent-controlled trigger", () => {
@@ -582,6 +749,7 @@ describe("Drawer", () => {
         <p>Drawer content</p>
       </Drawer>,
     );
+    finishDrawerExit();
 
     act(() => {
       fireEvent.pointerMove(window, {
@@ -603,6 +771,47 @@ describe("Drawer", () => {
     });
 
     expect(screen.queryByText("Drawer content")).not.toBeInTheDocument();
+  });
+
+  it("ignores swipe gestures that start on interactive children", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <Drawer defaultOpen placement="bottom" onOpenChange={onOpenChange}>
+        <button type="button">Inside action</button>
+      </Drawer>,
+    );
+
+    const action = screen.getByRole("button", { name: "Inside action" });
+    act(() => {
+      fireEvent.pointerDown(action, {
+        pointerId: 1,
+        button: 0,
+        pointerType: "touch",
+        pageX: 200,
+        pageY: 200,
+        clientX: 200,
+        clientY: 200,
+      });
+      fireEvent.pointerMove(window, {
+        pointerId: 1,
+        pointerType: "touch",
+        pageX: 200,
+        pageY: 360,
+        clientX: 200,
+        clientY: 360,
+      });
+      fireEvent.pointerUp(window, {
+        pointerId: 1,
+        pointerType: "touch",
+        pageX: 200,
+        pageY: 360,
+        clientX: 200,
+        clientY: 360,
+      });
+    });
+
+    expect(getDrawerPanel()).toBeTruthy();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("throws when DrawerHandle is used outside Drawer", () => {

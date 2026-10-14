@@ -66,6 +66,12 @@
   color: var(--color-fg-muted);
   outline: none;
   user-select: none;
+  transition: color var(--interaction-transition-duration)
+    var(--interaction-transition-curve);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+  }
 
   &[data-orientation="horizontal"] {
     height: calc(100% - 1px);

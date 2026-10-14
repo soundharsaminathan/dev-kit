@@ -1,0 +1,38 @@
+import { forwardRef, Global, Module } from "@nestjs/common";
+import { EmailModule } from "../email/email.module";
+import { NotificationsModule } from "../notifications/notifications.module";
+import { StaffInvitesModule } from "../staff-invites/staff-invites.module";
+import { AuthController } from "./auth.controller";
+import { AuthGuard } from "./auth.guard";
+import { AuthService } from "./auth.service";
+import { FirebaseService } from "./firebase.service";
+import { OptionalAuthGuard } from "./optional-auth.guard";
+import { RolesGuard } from "./roles.guard";
+import { TokenGuard } from "./token.guard";
+
+@Global()
+@Module({
+  imports: [
+    NotificationsModule,
+    EmailModule,
+    forwardRef(() => StaffInvitesModule),
+  ],
+  controllers: [AuthController],
+  providers: [
+    AuthService,
+    FirebaseService,
+    AuthGuard,
+    OptionalAuthGuard,
+    TokenGuard,
+    RolesGuard,
+  ],
+  exports: [
+    AuthService,
+    FirebaseService,
+    AuthGuard,
+    OptionalAuthGuard,
+    TokenGuard,
+    RolesGuard,
+  ],
+})
+export class AuthModule {}

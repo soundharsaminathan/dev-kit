@@ -10,6 +10,12 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./loaders": {
+      "development": "./src/loaders.ts",
+      "types": "./dist/loaders.d.ts",
+      "import": "./dist/loaders.js",
+      "default": "./dist/loaders.js"
     }
   },
   "files": [

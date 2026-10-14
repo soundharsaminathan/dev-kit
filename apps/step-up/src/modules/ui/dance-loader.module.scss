@@ -1,0 +1,179 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100%;
+  overflow: hidden;
+  background: var(--surface-background, var(--color-bg, #f5efe6));
+  color: var(--color-fg, #1b2a4a);
+}
+
+:global(html[data-theme-mode="dark"]) .root {
+  background: var(--surface-background, var(--color-bg, oklch(0.13 0.005 78)));
+  color: var(--color-fg, oklch(0.95 0.01 78));
+}
+
+.dancer {
+  display: block;
+  width: min(100vw, 92dvh);
+  height: min(72dvh, 100vw);
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  transform: translateY(-10%) scale(1.2);
+}
+
+.mark {
+  position: relative;
+  width: min(42vw, 11rem);
+  height: min(42vw, 11rem);
+  margin: 0 auto 4.5rem;
+}
+
+.markPulse,
+.markCore {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.markPulse {
+  border: 2px solid color-mix(in srgb, #ee8a55 55%, transparent);
+  animation: boot-pulse 1.6s ease-out infinite;
+}
+
+.markCore {
+  inset: 22%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, #ee8a55 88%, #fff) 0%,
+    #ee8a55 45%,
+    color-mix(in srgb, #ee8a55 70%, #1b2a4a) 100%
+  );
+  box-shadow: 0 12px 40px color-mix(in srgb, #ee8a55 35%, transparent);
+}
+
+@keyframes boot-pulse {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
+.caption {
+  position: absolute;
+  top: 75%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0 var(--space-6, 1.5rem);
+  font-family:
+    "Plus Jakarta Sans",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: clamp(1.25rem, 4.5vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+  color: var(--color-fg, #1c1a17);
+  text-align: center;
+  transform: translateY(-50%);
+}
+
+.caption[data-me-greeting] {
+  font-weight: 800;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+
+.emphasis {
+  color: #ee8a55;
+}
+
+.cascade {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.measure {
+  display: block;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.cascadeLayer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  white-space: pre;
+}
+
+.letter,
+.letterEmphasis,
+.letterSpace {
+  display: inline-block;
+  white-space: pre;
+  will-change: opacity, filter, transform;
+}
+
+.letterSpace {
+  flex-shrink: 0;
+  width: 0.28em;
+}
+
+.letterEmphasis {
+  color: #ee8a55;
+}
+
+.letter {
+  color: var(--color-fg, #1c1a17);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markPulse {
+    animation: none;
+    opacity: 0.35;
+  }
+
+  .caption {
+    opacity: 0.72;
+  }
+
+  .letter,
+  .letterEmphasis,
+  .letterSpace {
+    will-change: auto;
+  }
+}

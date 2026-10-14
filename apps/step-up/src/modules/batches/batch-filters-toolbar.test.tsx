@@ -1,0 +1,63 @@
+import { fireEvent, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { renderWithProviders } from "@/test/render";
+import { BatchFiltersToolbar } from "./batch-filters-toolbar";
+
+const defaultProps = {
+  status: "ALL",
+  category: "ALL",
+  search: "",
+  countMatches: () => 0,
+  onStatusChange: vi.fn(),
+  onCategoryChange: vi.fn(),
+  onSearchChange: vi.fn(),
+};
+
+describe("BatchFiltersToolbar", () => {
+  it("updates search when typing in the search box", () => {
+    const onSearchChange = vi.fn();
+    renderWithProviders(
+      <BatchFiltersToolbar {...defaultProps} onSearchChange={onSearchChange} />,
+    );
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Search batches" }),
+      {
+        target: { value: "hip hop" },
+      },
+    );
+    expect(onSearchChange).toHaveBeenCalledWith("hip hop");
+  });
+
+  it("changes status when Active is clicked", () => {
+    const onStatusChange = vi.fn();
+    renderWithProviders(
+      <BatchFiltersToolbar {...defaultProps} onStatusChange={onStatusChange} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Active" }));
+    expect(onStatusChange).toHaveBeenCalledWith("ACTIVE");
+  });
+
+  it("changes category when Kids is clicked", () => {
+    const onCategoryChange = vi.fn();
+    renderWithProviders(
+      <BatchFiltersToolbar
+        {...defaultProps}
+        onCategoryChange={onCategoryChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Kids" }));
+    expect(onCategoryChange).toHaveBeenCalledWith("KIDS");
+  });
+
+  it("opens advanced filters from the filter icon", () => {
+    renderWithProviders(<BatchFiltersToolbar {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open filters" }));
+    expect(
+      screen.getByRole("heading", { name: "Filters" }),
+    ).toBeInTheDocument();
+  });
+});

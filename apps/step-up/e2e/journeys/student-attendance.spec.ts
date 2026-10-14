@@ -1,0 +1,43 @@
+import {
+  apiRequest,
+  authFile,
+  expect,
+  test,
+  waitForAppReady,
+} from "../fixtures";
+import { SEED } from "../fixtures/seed";
+
+test.describe("student attendance @critical", () => {
+  test("student attendance history shows session records @critical", async ({
+    browser,
+  }) => {
+    // Ensure at least one attendance record exists for history-ready sessions.
+    await apiRequest("TRAINER", "/attendance/mark", {
+      method: "POST",
+      body: JSON.stringify({
+        sessionId: SEED.sessionAttendancePastId,
+        studentId: SEED.users.STUDENT.id,
+        status: "PRESENT",
+        source: "TRAINER",
+      }),
+    }).catch(() => null);
+
+    const context = await browser.newContext({
+      storageState: authFile("STUDENT"),
+    });
+    const page = await context.newPage();
+    await page.goto("/me/attendance");
+    await waitForAppReady(page);
+    await expect(page).toHaveURL(/\/me\/attendance/);
+    // Empty-state title "No attendance yet" is also a heading matching /attendance/i.
+    await expect(
+      page.getByRole("heading", { name: "Attendance", exact: true }),
+    ).toBeVisible();
+
+    const row = page.locator("[data-testid^='attendance-row-']").first();
+    const empty = page.getByText(/No attendance yet/i);
+    await expect(row.or(empty).first()).toBeVisible();
+
+    await context.close();
+  });
+});

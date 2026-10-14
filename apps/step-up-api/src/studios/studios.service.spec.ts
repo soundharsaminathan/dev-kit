@@ -1,0 +1,742 @@
+import { BadRequestException, ConflictException } from "@nestjs/common";
+import { Prisma, StudioStatus, UserRole } from "../generated/prisma/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_STUDIO_MARKETPLACE_TOGGLES } from "../discover/marketplace.contract";
+import { StudiosService } from "./studios.service";
+
+describe("StudiosService", () => {
+  const prisma = {
+    studio: {
+      update: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      delete: vi.fn(),
+    },
+    studioSettings: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+    },
+    contestCertificate: {
+      deleteMany: vi.fn(),
+    },
+    contest: {
+      deleteMany: vi.fn(),
+    },
+    batch: {
+      deleteMany: vi.fn(),
+    },
+    user: {
+      findFirst: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  };
+  const crypto = {
+    encryptStudioSecret: vi.fn((secret: string) => ({
+      ciphertext: `sealed:${secret}`,
+      iv: "iv-1",
+    })),
+    decryptStudioSecret: vi.fn((ciphertext: string) =>
+      ciphertext.replace(/^sealed:/, ""),
+    ),
+    hashEmail: vi.fn((email: string) => `hash:${email}`),
+    sealPii: vi.fn(() => ({
+      encryptedKey: "key",
+      piiCiphertext: "cipher",
+      piiIv: "iv",
+      emailHash: "hash",
+    })),
+    decryptUser: vi.fn((user: { id: string }) => ({
+      id: user.id,
+      email: "owner@example.com",
+      name: "Owner",
+    })),
+  };
+  const media = {
+    signReadUrl: vi.fn(async (url: string | null) =>
+      url ? `signed:${url}` : null,
+    ),
+    signReadUrls: vi.fn(async (urls: string[]) =>
+      urls.map((url) => `signed:${url}`),
+    ),
+  };
+  const razorpay = {
+    assertValidCredentials: vi.fn(async () => undefined),
+  };
+  const firebase = {
+    ensureEmailPasswordUser: vi.fn(async () => null),
+  };
+
+  let service: StudiosService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prisma.studioSettings.findUnique.mockResolvedValue(null);
+    service = new StudiosService(
+      prisma as never,
+      crypto as never,
+      media as never,
+      razorpay as never,
+      firebase as never,
+    );
+  });
+
+  it("lists public studio directory entries without test studios", async () => {
+    prisma.studio.findMany.mockResolvedValue([
+      { id: "studio-2", slug: "beta", name: "Beta" },
+      { id: "studio-e2e", slug: "e2e-test-studio", name: "E2E Test Studio" },
+      {
+        id: "studio-login",
+        slug: "e2e-owner-login-1785885721343",
+        name: "E2E Owner Login 1785885721343",
+      },
+      { id: "studio-1", slug: "alpha", name: "Alpha" },
+    ]);
+
+    await expect(service.listDirectory()).resolves.toEqual([
+      { id: "studio-2", slug: "beta", name: "Beta" },
+      { id: "studio-1", slug: "alpha", name: "Alpha" },
+    ]);
+    expect(prisma.studio.findMany).toHaveBeenCalledWith({
+      where: { status: StudioStatus.ACTIVE },
+      orderBy: { name: "asc" },
+      select: { id: true, slug: true, name: true },
+    });
+  });
+
+  it("includes test studios in the directory when opted in", async () => {
+    prisma.studio.findMany.mockResolvedValue([
+      { id: "studio-e2e", slug: "e2e-test-studio", name: "E2E Test Studio" },
+      { id: "studio-1", slug: "alpha", name: "Alpha" },
+    ]);
+
+    await expect(service.listDirectory(true)).resolves.toEqual([
+      { id: "studio-e2e", slug: "e2e-test-studio", name: "E2E Test Studio" },
+      { id: "studio-1", slug: "alpha", name: "Alpha" },
+    ]);
+  });
+
+  it("encrypts razorpay secret and never returns it", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: "rzp_test_studio",
+      razorpayKeySecret: "sealed:secret",
+      razorpaySecretIv: "iv-1",
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: null,
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      razorpayKeyId: "rzp_test_studio",
+      razorpayKeySecret: "plain-secret",
+    });
+
+    expect(razorpay.assertValidCredentials).toHaveBeenCalledWith({
+      keyId: "rzp_test_studio",
+      keySecret: "plain-secret",
+    });
+    expect(crypto.encryptStudioSecret).toHaveBeenCalledWith("plain-secret");
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          razorpayKeyId: "rzp_test_studio",
+          razorpayKeySecret: "sealed:plain-secret",
+          razorpaySecretIv: "iv-1",
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: "rzp_test_studio",
+      razorpayConfigured: true,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiConfigured: false,
+      aiProvider: null,
+      aiChatModel: null,
+      ...DEFAULT_STUDIO_MARKETPLACE_TOGGLES,
+    });
+    expect(result).not.toHaveProperty("razorpayKeySecret");
+    expect(result).not.toHaveProperty("aiApiKey");
+    expect(result).not.toHaveProperty("aiApiKeyIv");
+  });
+
+  it("encrypts AI API key and never returns it", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: "GROQ",
+      aiApiKey: "sealed:ai-key",
+      aiApiKeyIv: "iv-1",
+      aiChatModel: null,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      aiProvider: "groq",
+      aiApiKey: "ai-key",
+    });
+
+    expect(crypto.encryptStudioSecret).toHaveBeenCalledWith("ai-key");
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          aiProvider: "GROQ",
+          aiApiKey: "sealed:ai-key",
+          aiApiKeyIv: "iv-1",
+        }),
+      }),
+    );
+    expect(result.aiConfigured).toBe(true);
+    expect(result.aiProvider).toBe("groq");
+    expect(result).not.toHaveProperty("aiApiKey");
+    expect(result).not.toHaveProperty("aiApiKeyIv");
+  });
+
+  it("persists marketplace visibility and booking toggles", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: null,
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
+      publicTrainers: false,
+      bookingFloorHire: true,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      publicTrainers: false,
+      bookingFloorHire: true,
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          publicTrainers: false,
+          bookingFloorHire: true,
+        }),
+      }),
+    );
+    expect(result.publicTrainers).toBe(false);
+    expect(result.bookingFloorHire).toBe(true);
+    expect(result.publicClasses).toBe(true);
+  });
+
+  it("rejects saving an AI key without a provider", async () => {
+    await expect(
+      service.updateSettings("studio-1", {
+        aiApiKey: "ai-key",
+      }),
+    ).rejects.toThrow(/AI provider is required/);
+    expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
+  });
+
+  it("clears AI key when empty string is sent", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: "GROQ",
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      aiApiKey: "",
+    });
+
+    expect(crypto.encryptStudioSecret).not.toHaveBeenCalled();
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          aiApiKey: null,
+          aiApiKeyIv: null,
+        }),
+      }),
+    );
+    expect(result.aiConfigured).toBe(false);
+  });
+
+  it("rejects saving a secret without a key ID", async () => {
+    await expect(
+      service.updateSettings("studio-1", {
+        razorpayKeySecret: "plain-secret",
+      }),
+    ).rejects.toThrow(/key ID is required/);
+    expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
+  });
+
+  it("clears secret when empty string is sent", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      timezone: "Asia/Kolkata",
+      razorpayKeyId: "rzp_test_studio",
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+      aiProvider: null,
+      aiApiKey: null,
+      aiApiKeyIv: null,
+      aiChatModel: null,
+    });
+
+    const result = await service.updateSettings("studio-1", {
+      razorpayKeySecret: "",
+    });
+
+    expect(razorpay.assertValidCredentials).not.toHaveBeenCalled();
+    expect(crypto.encryptStudioSecret).not.toHaveBeenCalled();
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          razorpayKeySecret: null,
+          razorpaySecretIv: null,
+        }),
+      }),
+    );
+    expect(result.razorpayConfigured).toBe(false);
+  });
+
+  it("persists validated danceStyles and clears to defaults with null", async () => {
+    const danceStyles = [
+      {
+        id: "hip-hop",
+        label: "Hip Hop",
+        abbrev: "HH",
+        color: "#E4572E",
+        emoji: "🎤",
+      },
+    ];
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+    });
+
+    const saved = await service.updateSettings("studio-1", { danceStyles });
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ danceStyles }),
+      }),
+    );
+    expect(saved.danceStyles).toEqual(danceStyles);
+
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 0,
+    });
+
+    const cleared = await service.updateSettings("studio-1", {
+      danceStyles: null,
+    });
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ danceStyles: Prisma.DbNull }),
+      }),
+    );
+    expect(cleared.danceStyles).toBeNull();
+  });
+
+  it("rejects invalid danceStyles", async () => {
+    await expect(
+      service.updateSettings("studio-1", {
+        danceStyles: [{ id: "bad", label: "Bad" }],
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
+  });
+
+  it("normalizes and persists gstNumber", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: "22AAAAA0000A1Z5",
+      gstPercent: 0,
+      admissionFee: 0,
+    });
+
+    const saved = await service.updateSettings("studio-1", {
+      gstNumber: " 22aaaaa0000a1z5 ",
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ gstNumber: "22AAAAA0000A1Z5" }),
+      }),
+    );
+    expect(saved.gstNumber).toBe("22AAAAA0000A1Z5");
+  });
+
+  it("persists gstPercent", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 18,
+      admissionFee: 0,
+    });
+
+    const saved = await service.updateSettings("studio-1", {
+      gstPercent: 18,
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ gstPercent: 18 }),
+      }),
+    );
+    expect(saved.gstPercent).toBe(18);
+  });
+
+  it("persists admissionFee", async () => {
+    prisma.studioSettings.upsert.mockResolvedValue({
+      graceDays: 3,
+      expireAlertDays: 7,
+      platformFeePercent: 5,
+      razorpayKeyId: null,
+      razorpayKeySecret: null,
+      razorpaySecretIv: null,
+      danceStyles: null,
+      gstNumber: null,
+      gstPercent: 0,
+      admissionFee: 1500,
+    });
+
+    const saved = await service.updateSettings("studio-1", {
+      admissionFee: 1500,
+    });
+
+    expect(prisma.studioSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ admissionFee: 1500 }),
+      }),
+    );
+    expect(saved.admissionFee).toBe(1500);
+  });
+
+  it("rejects invalid public Instagram", () => {
+    expect(() =>
+      service.updateStudio("studio-1", {
+        instagramUrl: "https://tiktok.com/x",
+      }),
+    ).toThrow(BadRequestException);
+    expect(prisma.studio.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects negative admissionFee", async () => {
+    await expect(
+      service.updateSettings("studio-1", { admissionFee: -1 }),
+    ).rejects.toThrow(/cannot be negative/);
+    expect(prisma.studioSettings.upsert).not.toHaveBeenCalled();
+  });
+
+  it("clears logo", async () => {
+    prisma.studio.update.mockResolvedValue({
+      id: "studio-1",
+      logoUrl: null,
+    });
+
+    await service.updateStudio("studio-1", {
+      logoUrl: null,
+    });
+
+    expect(prisma.studio.update).toHaveBeenCalledWith({
+      where: { id: "studio-1" },
+      data: {
+        logoUrl: null,
+      },
+    });
+  });
+
+  it("creates studio, settings, and owner in a transaction", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.$transaction.mockImplementation(async (fn) => {
+      const tx = {
+        user: {
+          create: vi.fn().mockResolvedValue({ id: "owner-new" }),
+          update: vi.fn(),
+          findUniqueOrThrow: vi
+            .fn()
+            .mockResolvedValue({ id: "owner-new", email: "x" }),
+        },
+        studio: {
+          findMany: vi.fn().mockResolvedValue([]),
+          create: vi.fn().mockResolvedValue({
+            id: "studio-new",
+            slug: "nova-dance",
+            name: "Nova Dance",
+            address: null,
+            contact: null,
+          }),
+        },
+        feature: {
+          findMany: vi.fn().mockResolvedValue([{ id: "feat-bookings" }]),
+        },
+        studioFeature: {
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      };
+      const result = await fn(tx);
+      expect(tx.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            mustChangePassword: true,
+          }),
+        }),
+      );
+      expect(tx.studioFeature.createMany).toHaveBeenCalled();
+      return result;
+    });
+
+    const result = await service.createStudio({
+      name: "Nova Dance",
+      ownerEmail: "owner@example.com",
+      ownerName: "Nova Owner",
+      temporaryPassword: "TempPass1",
+    });
+
+    expect(result.id).toBe("studio-new");
+    expect(result.ownerProvisioned).toBe(true);
+    expect(result.owner.email).toBe("owner@example.com");
+    expect(result.temporaryPassword).toBe("TempPass1");
+    expect(result.setupHint).toMatch(/temporary password/i);
+    expect(firebase.ensureEmailPasswordUser).toHaveBeenCalledWith({
+      email: "owner@example.com",
+      password: "TempPass1",
+      displayName: "Nova Owner",
+    });
+  });
+
+  it("rejects owners who already belong to a studio", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "owner-1",
+      role: UserRole.STUDENT,
+      studioId: "studio-seed-1",
+      ownedStudio: null,
+    });
+
+    await expect(
+      service.createStudio({
+        name: "Other",
+        ownerEmail: "student@stepup.dev",
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("persists hero image urls", async () => {
+    prisma.studio.update.mockResolvedValue({
+      id: "studio-1",
+      heroMobileUrl: "studio-heroes/mobile.jpg",
+      heroDesktopUrl: "studio-heroes/desktop.jpg",
+    });
+
+    await service.updateStudio("studio-1", {
+      heroMobileUrl: "studio-heroes/mobile.jpg",
+      heroDesktopUrl: "studio-heroes/desktop.jpg",
+    });
+
+    expect(prisma.studio.update).toHaveBeenCalledWith({
+      where: { id: "studio-1" },
+      data: {
+        heroMobileUrl: "studio-heroes/mobile.jpg",
+        heroDesktopUrl: "studio-heroes/desktop.jpg",
+      },
+    });
+  });
+
+  it("persists public studio details and nullifies blanks", async () => {
+    prisma.studio.update.mockResolvedValue({ id: "studio-1" });
+
+    await service.updateStudio("studio-1", {
+      tagline: "Hip Hop in T Nagar",
+      about: "  ",
+      email: "Hello@Studio.IN",
+      whatsapp: "+91 98765 43210",
+      instagramUrl: "@rhythmhouse",
+      foundedYear: 2018,
+    });
+
+    expect(prisma.studio.update).toHaveBeenCalledWith({
+      where: { id: "studio-1" },
+      data: {
+        tagline: "Hip Hop in T Nagar",
+        about: null,
+        email: "hello@studio.in",
+        whatsapp: "+91 98765 43210",
+        instagramUrl: "https://instagram.com/rhythmhouse",
+        foundedYear: 2018,
+      },
+    });
+  });
+
+  it("clears hero images when null is sent", async () => {
+    prisma.studio.update.mockResolvedValue({
+      id: "studio-1",
+      heroMobileUrl: null,
+      heroDesktopUrl: null,
+    });
+
+    await service.updateStudio("studio-1", {
+      heroMobileUrl: null,
+      heroDesktopUrl: null,
+    });
+
+    expect(prisma.studio.update).toHaveBeenCalledWith({
+      where: { id: "studio-1" },
+      data: {
+        heroMobileUrl: null,
+        heroDesktopUrl: null,
+      },
+    });
+  });
+
+  it("requires a studio name", async () => {
+    await expect(
+      service.createStudio({
+        name: "   ",
+        ownerEmail: "owner@example.com",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("deletes a studio after clearing members, linked orphans, and blockers", async () => {
+    prisma.studio.findUnique.mockResolvedValue({
+      id: "studio-1",
+      name: "Nova Dance",
+    });
+    prisma.user.findMany
+      .mockResolvedValueOnce([{ id: "owner-1" }, { id: "staff-1" }])
+      .mockResolvedValueOnce([{ id: "orphan-student-1" }]);
+
+    const tx = {
+      contestCertificate: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      contest: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      batch: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      contestEntry: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      user: {
+        updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+        deleteMany: vi.fn().mockResolvedValue({ count: 3 }),
+      },
+      studio: { delete: vi.fn().mockResolvedValue({ id: "studio-1" }) },
+    };
+    prisma.$transaction.mockImplementation(async (fn) => fn(tx));
+
+    const result = await service.deleteStudio("studio-1");
+
+    expect(result).toEqual({
+      deleted: true,
+      id: "studio-1",
+      name: "Nova Dance",
+    });
+    expect(prisma.user.findMany).toHaveBeenCalledTimes(2);
+    expect(tx.contestEntry.deleteMany).toHaveBeenCalledWith({
+      where: {
+        registeredById: {
+          in: expect.arrayContaining([
+            "owner-1",
+            "staff-1",
+            "orphan-student-1",
+          ]),
+        },
+      },
+    });
+    expect(tx.user.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: expect.arrayContaining([
+            "owner-1",
+            "staff-1",
+            "orphan-student-1",
+          ]),
+        },
+      },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it("rejects deleting a missing studio", async () => {
+    prisma.studio.findUnique.mockResolvedValue(null);
+
+    await expect(service.deleteStudio("missing")).rejects.toThrow(
+      /Studio not found/,
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});

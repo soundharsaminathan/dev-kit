@@ -180,6 +180,7 @@ function Select<T extends CollectionItem>({
         value={{
           triggerRef,
           state,
+          isNonModal: true,
         }}
       >
         <Field
@@ -302,6 +303,8 @@ SelectContent.displayName = "SelectContent";
 
 export {
   ListBoxItem as SelectItem,
+  ListBoxItemDescription as SelectItemDescription,
+  ListBoxItemLabel as SelectItemLabel,
   ListBoxSection as SelectSection,
   ListBoxSectionHeader as SelectSectionHeader,
 } from "../list-box/ListBox";

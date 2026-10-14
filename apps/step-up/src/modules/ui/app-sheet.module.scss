@@ -1,0 +1,22 @@
+.modal {
+  max-width: min(32rem, calc(100vw - var(--space-8, 2rem)));
+}
+
+.modal[data-size="wide"] {
+  width: min(50dvw, calc(100vw - var(--space-8, 2rem)));
+  max-width: min(50dvw, calc(100vw - var(--space-8, 2rem)));
+  min-width: min(32rem, calc(100vw - var(--space-8, 2rem)));
+}
+
+.content {
+  min-width: 0;
+}
+
+.body {
+  padding-block-end: var(--space-2, 0.5rem);
+  overflow: auto;
+}
+
+.body[data-size="tall"] {
+  max-height: min(80vh, 40rem);
+}

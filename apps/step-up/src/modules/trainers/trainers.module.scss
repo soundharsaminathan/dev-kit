@@ -1,0 +1,620 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.cardsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.cardShell {
+  cursor: default;
+}
+
+.cardShell:active {
+  transform: none;
+}
+
+.cardRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  width: 100%;
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: 1px solid transparent;
+  transition:
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.cardRow[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-card, var(--color-bg)));
+}
+
+.cardSelectHint {
+  flex-shrink: 0;
+  align-self: center;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.cardSelectHint[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--color-primary);
+}
+
+.cardHit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.cardActions {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  padding-block-start: 0.125rem;
+}
+
+.cardBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.cardName {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.cardMeta {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.followCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 0.75rem);
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.followCountsCompact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+.followCounts strong,
+.followCountsCompact strong {
+  color: var(--color-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.styleTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 0.25rem);
+}
+
+.avatarLg {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-lg, 0.75rem);
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.avatarMd {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-md, 0.5rem);
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.avatarXl {
+  flex-shrink: 0;
+  --avatar-radius: var(--radius-xl, 1rem);
+  width: 4rem;
+  height: 4rem;
+}
+
+.bentoRoot {
+  --bento-tile-size: 13.5rem;
+  --bento-gap: var(--space-2, 0.5rem);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.bentoGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--bento-columns, 3), var(--bento-tile-size));
+  gap: var(--bento-gap);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.bentoGridExpanded {
+  grid-auto-flow: row;
+}
+
+.bentoTile {
+  position: relative;
+  aspect-ratio: 1;
+  width: var(--bento-tile-size);
+  border-radius: var(--radius-xl, 1rem);
+  overflow: hidden;
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+}
+
+.bentoTileHit {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+  transition: transform var(--motion-fast, 150ms) ease;
+}
+
+.bentoTileHit:active {
+  transform: scale(var(--interaction-press-scale, 0.97));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bentoTileHit {
+    transition-duration: 0ms;
+  }
+
+  .bentoTileHit:active {
+    transform: none;
+  }
+}
+
+.bentoPhoto {
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.bentoPhoto[data-fallback="true"] {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-primary) 28%, transparent),
+    color-mix(in srgb, var(--color-fg) 12%, transparent)
+  );
+}
+
+.bentoPhotoFallback {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+}
+
+.bentoTileOverlay {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-2, 0.5rem);
+  pointer-events: none;
+}
+
+.bentoTileName {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding-inline: 0.4375rem;
+  padding-block: 0.125rem;
+  border-radius: var(--badge-radius, 999px);
+  background-color: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--color-fg);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bentoMoreBtn,
+.bentoCloseBtn {
+  position: absolute;
+  top: var(--space-2, 0.5rem);
+  right: var(--space-2, 0.5rem);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  color: var(--color-fg);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.bentoCloseBtn {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.bentoCloseBtn:active {
+  transform: scale(var(--interaction-press-scale, 0.95));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bentoTileHit:hover .bentoMoreBtn,
+  .bentoCloseBtn:hover {
+    background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  }
+}
+
+.bentoExpanded {
+  position: relative;
+  width: 100%;
+  height: var(--bento-tile-size);
+  border-radius: var(--radius-xl, 1rem);
+  overflow: hidden;
+  border: var(--card-border-width, 1px) solid
+    var(--card-border-color, color-mix(in srgb, var(--color-fg) 12%, transparent));
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--elevation-2, 0 4px 12px rgb(0 0 0 / 8%));
+}
+
+.bentoExpandedInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.bentoExpandedInner[data-direction="left"] {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.bentoExpanded .bentoPhoto {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.bentoExpandedBody {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+  height: 100%;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  overflow: hidden;
+}
+
+.bentoExpandedHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.bentoExpandedName {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.bentoExpandedStyles {
+  align-content: flex-start;
+  overflow: hidden;
+}
+
+.bentoExpandedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 0.25rem);
+}
+
+.bentoEmpty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.stackRoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+  padding-block: var(--space-1, 0.25rem);
+}
+
+.stackViewport {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-inline: 0.75rem;
+}
+
+.stackTrack {
+  display: flex;
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.stackTrack:active {
+  cursor: grabbing;
+}
+
+.stackCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 26rem;
+  border-radius: var(--radius-2xl, 1.25rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%)));
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: border-color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.stackCard[data-compact="true"] {
+  height: 21rem;
+}
+
+.stackCard[data-selected="true"] {
+  border-color: var(--color-primary);
+  box-shadow:
+    var(--card-shadow, var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%))),
+    0 0 0 2px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.stackCardPhoto {
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.stackCardPhoto[data-fallback="true"] {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-primary) 42%, transparent),
+    color-mix(in srgb, var(--color-fg) 16%, transparent)
+  );
+}
+
+.stackPhotoFallback {
+  font-size: 4.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+}
+
+.stackPhotoScrim {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 70%;
+  background: linear-gradient(
+    to top,
+    rgb(0 0 0 / 82%) 0%,
+    rgb(0 0 0 / 45%) 45%,
+    rgb(0 0 0 / 0%) 100%
+  );
+  pointer-events: none;
+}
+
+.stackCardContent {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  color: #fff;
+}
+
+.stackInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+}
+
+.stackName {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 35%);
+}
+
+.stackFollowCounts .followCountsCompact {
+  color: rgb(255 255 255 / 78%);
+}
+
+.stackFollowCounts .followCountsCompact strong {
+  color: #fff;
+}
+
+.stackStyleList {
+  justify-content: flex-start;
+  margin-block-start: var(--space-1, 0.25rem);
+}
+
+.stackEmpty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 62%);
+}
+
+.stackActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+}
+
+.stackQuickActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  margin-inline-start: auto;
+}
+
+.stackSelectBtn {
+  min-height: 2.5rem;
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  border-radius: var(--radius-full);
+  border: 1px solid rgb(255 255 255 / 28%);
+  background: rgb(255 255 255 / 12%);
+  backdrop-filter: blur(8px);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    transform var(--interaction-transition-fast, 120ms) ease,
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease,
+    color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.stackSelectBtn:active {
+  transform: scale(var(--interaction-press-scale, 0.97));
+}
+
+.stackSelectBtn[data-selected="true"] {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: var(--color-fg-on-primary);
+}
+
+.stackOpenBtn,
+.stackQuickBtn {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast, 150ms) ease,
+    transform var(--motion-fast, 150ms) ease;
+}
+
+.stackOpenBtn:active,
+.stackQuickBtn:active {
+  transform: scale(var(--interaction-press-scale, 0.93));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stackOpenBtn:hover,
+  .stackQuickBtn:hover {
+    background: rgb(255 255 255 / 24%);
+  }
+}
+
+.stackProgress {
+  display: flex;
+  gap: 0.3125rem;
+  width: min(100%, 18rem);
+  margin-inline: auto;
+}
+
+.stackProgressSeg {
+  flex: 1;
+  height: 0.1875rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 18%, transparent);
+  cursor: pointer;
+  transition: background-color var(--motion-fast, 150ms) ease;
+}
+
+.stackProgressSegActive {
+  background: var(--color-fg);
+}
+
+.stackCounter {
+  margin: 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg-muted, var(--color-fg));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bentoMoreBtn,
+  .bentoCloseBtn,
+  .stackOpenBtn,
+  .stackQuickBtn,
+  .stackSelectBtn,
+  .stackProgressSeg {
+    transition-duration: 0ms;
+  }
+
+  .bentoMoreBtn:active,
+  .bentoCloseBtn:active,
+  .stackOpenBtn:active,
+  .stackQuickBtn:active,
+  .stackSelectBtn:active {
+    transform: none;
+  }
+}

@@ -1,0 +1,45 @@
+.personas {
+  background: color-mix(in srgb, var(--surface-background, #f8f4ec) 50%, #fff);
+}
+
+.intro {
+  max-width: 32rem;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-5, 1.25rem);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--card-radius, 1.25rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: var(--color-card, #fff);
+  box-shadow: 0 1px 2px rgb(28 26 23 / 4%);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.cardBody {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5, 1.25rem);
+  }
+}

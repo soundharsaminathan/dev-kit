@@ -5,6 +5,8 @@ import { glassmorphismTheme } from "./glassmorphism.js";
 import { materialTheme } from "./material.js";
 import { neoBrutalismTheme } from "./neo-brutalism.js";
 import { neumorphismTheme } from "./neumorphism.js";
+import { stepUpTheme } from "./step-up.js";
+import { stepUpSoftTheme } from "./step-up-soft.js";
 import { terminalTheme } from "./terminal.js";
 
 export { auroraTheme } from "./aurora.js";
@@ -13,6 +15,8 @@ export { glassmorphismTheme, glassTheme } from "./glassmorphism.js";
 export { materialTheme } from "./material.js";
 export { neoBrutalismTheme } from "./neo-brutalism.js";
 export { neumorphismTheme } from "./neumorphism.js";
+export { stepUpTheme } from "./step-up.js";
+export { stepUpSoftTheme } from "./step-up-soft.js";
 export { terminalTheme } from "./terminal.js";
 
 export const builtInThemes = {
@@ -23,6 +27,8 @@ export const builtInThemes = {
   "neo-brutalism": neoBrutalismTheme,
   aurora: auroraTheme,
   terminal: terminalTheme,
+  "step-up": stepUpTheme,
+  "step-up-soft": stepUpSoftTheme,
 } as const satisfies Record<string, ThemeDefinition>;
 
 export type BuiltInThemeId = keyof typeof builtInThemes;

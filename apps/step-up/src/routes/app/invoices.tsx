@@ -1,0 +1,799 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@dev-ui/components/avatar";
+import { Badge } from "@dev-ui/components/badge";
+import { Menu, MenuContent, MenuItem } from "@dev-ui/components/menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@dev-ui/components/select";
+import { Tab, TabList, TabPanel, Tabs } from "@dev-ui/components/tabs";
+import { useToastContext } from "@dev-ui/components/toast";
+import { Icon } from "@dev-ui/icons";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useApi } from "@/lib/api-context";
+import { fetchAllPages } from "@/lib/api-page";
+import { requireAdmin } from "@/lib/require-auth";
+import { useStudioId } from "@/lib/use-studio-id";
+import { CollectPaymentSheet } from "@/modules/payments/collect-payment-sheet";
+import {
+  findFamilyForStudent,
+  shouldOfferFamilyCombine,
+} from "@/modules/payments/family-combine";
+import { FamilyCombineSheet } from "@/modules/payments/family-combine-sheet";
+import {
+  formatInvoiceMonthLabel,
+  formatPrice,
+  formatPriceParts,
+  type Invoice,
+  invoiceMatchesMonth,
+  invoicePrintPeriod,
+  invoiceTilePeriodLabel,
+  recentUtcMonthKeys,
+  type StudioFamily,
+  utcMonthKey,
+} from "@/modules/payments/invoice-types";
+import screen from "@/modules/payments/invoices-screen.module.scss";
+import { printInvoice } from "@/modules/payments/print-invoice";
+import { RefundInvoiceSheet } from "@/modules/payments/refund-invoice-sheet";
+import type { Studio } from "@/modules/settings/types";
+import {
+  StudentSearchCombobox,
+  type StudioStudent,
+} from "@/modules/students/student-search-combobox";
+import { FilterChipRow } from "@/modules/ui/filter-chip-row";
+import { PressableCard } from "@/modules/ui/pressable-card";
+import { PullToRefresh } from "@/modules/ui/pull-to-refresh";
+import { Screen } from "@/modules/ui/screen";
+import { SkeletonCardList } from "@/modules/ui/skeleton-block";
+import staff from "@/modules/ui/staff.module.scss";
+import { EmptyState, ErrorState } from "@/modules/ui/states";
+import { TouchButton } from "@/modules/ui/touch-button";
+
+export const Route = createFileRoute("/app/invoices")({
+  beforeLoad: ({ context, location }) => {
+    requireAdmin(context.auth, {
+      pathname: location.pathname,
+      searchStr: location.searchStr,
+    });
+  },
+  component: InvoicesPage,
+});
+
+type StatusFilter = "ALL" | "PENDING" | "OVERDUE" | "PAID";
+
+type StudioMember = {
+  id: string;
+  name: string;
+  role: string;
+};
+
+function statusBadgeVariant(status: Invoice["status"]) {
+  if (status === "PAID") return "success" as const;
+  if (status === "OVERDUE") return "danger" as const;
+  if (status === "REFUNDED") return "warning" as const;
+  return "neutral" as const;
+}
+
+function familySeatCounts(family: StudioFamily) {
+  const adults =
+    family.members.filter((member) => member.seatRole === "ADULT").length +
+    (family.ownerRole === "STUDENT" ? 1 : 0);
+  const kids = family.members.filter(
+    (member) => member.seatRole === "KID",
+  ).length;
+  return { adults, kids };
+}
+
+function isUnpaid(status: Invoice["status"]) {
+  return status === "PENDING" || status === "OVERDUE";
+}
+
+function canRefund(invoice: Invoice) {
+  if (invoice.status === "REFUNDED") return false;
+  if (invoice.status !== "PAID") return false;
+  if ((invoice.amount ?? 0) - (invoice.refundedAmount ?? 0) <= 0) return false;
+  if (!invoice.paidAt) return false;
+  const paidDate = new Date(invoice.paidAt);
+  const now = new Date();
+  const diffMs = now.getTime() - paidDate.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays <= 30;
+}
+
+function InvoiceCardAmount({ amount }: { amount: number }) {
+  const { currency, value } = formatPriceParts(amount);
+  return (
+    <span className={screen.amount}>
+      {currency ? (
+        <span className={screen.currencyMark}>{currency}</span>
+      ) : null}
+      {value}
+    </span>
+  );
+}
+
+type InvoiceCardProps = {
+  invoice: Invoice;
+  collectTestId: string;
+  onCollect: () => void;
+  onRefund?: (() => void) | undefined;
+  refundMode?: boolean | undefined;
+  studio?:
+    | (Pick<Studio, "name" | "address" | "logoUrl"> & {
+        settings?: Pick<NonNullable<Studio["settings"]>, "gstNumber"> | null;
+      })
+    | undefined;
+};
+
+function InvoiceCard({
+  invoice,
+  collectTestId,
+  onCollect,
+  onRefund,
+  refundMode = false,
+  studio,
+}: InvoiceCardProps) {
+  const { toast } = useToastContext("InvoiceCard");
+  const unpaid = isUnpaid(invoice.status);
+  const refundedAmount = invoice.refundedAmount ?? 0;
+  const isFamily = invoice.kind === "FAMILY" || invoice.kind === "COMBINED";
+  const summary = invoice.familySummary;
+  const periodLabel = invoiceTilePeriodLabel(invoice);
+  const metaParts = [
+    invoice.kind === "COMBINED"
+      ? "Combined family"
+      : isFamily
+        ? "Family pack"
+        : "Individual",
+  ];
+  if (invoice.batchName) {
+    metaParts.push(invoice.batchName);
+  }
+  if (invoice.chargeType === "POSTPAID_PRORATED") {
+    const attended = invoice.attendedSessionCount ?? 0;
+    const billed = invoice.billedSessionCount ?? 0;
+    metaParts.push(`${attended} / ${billed} sessions`);
+  }
+  if (invoice.chargeType === "PREPAID_PRORATED") {
+    const remaining = invoice.attendedSessionCount ?? 0;
+    const billed = invoice.billedSessionCount ?? 0;
+    metaParts.push(`${remaining} / ${billed} remaining`);
+  }
+  if (isFamily && summary?.planName) {
+    metaParts.push(summary.planName);
+  }
+  if (
+    isFamily &&
+    summary &&
+    (summary.adultCount != null || summary.kidCount != null)
+  ) {
+    metaParts.push(
+      `${summary.adultCount ?? 0} adult${(summary.adultCount ?? 0) === 1 ? "" : "s"} · ${summary.kidCount ?? 0} kid${(summary.kidCount ?? 0) === 1 ? "" : "s"}`,
+    );
+  }
+  if ((invoice.familyDiscount ?? 0) > 0) {
+    metaParts.push(`Family −${formatPrice(invoice.familyDiscount ?? 0)}`);
+  }
+  if (refundedAmount > 0) {
+    metaParts.push(`Refunded ${formatPrice(refundedAmount)}`);
+  }
+
+  return (
+    <PressableCard asDiv>
+      <div className={staff.rowCard}>
+        <div className={staff.attentionTop}>
+          <span className={staff.rowTitle}>
+            {invoice.student?.name ?? invoice.studentId}
+          </span>
+          <Badge variant={statusBadgeVariant(invoice.status)}>
+            {invoice.status === "PAID" && refundedAmount > 0
+              ? "PARTIAL REFUND"
+              : invoice.status}
+          </Badge>
+        </div>
+        <div className={screen.amountRow}>
+          <InvoiceCardAmount
+            amount={
+              refundMode ? refundedAmount || invoice.amount : invoice.amount
+            }
+          />
+          <span className={screen.amountHint}>
+            {refundMode
+              ? "Refunded"
+              : unpaid
+                ? "Total due"
+                : invoice.status === "REFUNDED"
+                  ? "Originally paid"
+                  : "Total paid"}
+          </span>
+        </div>
+        {periodLabel ? (
+          <p
+            className={screen.period}
+            data-testid={`invoice-months-${invoice.id}`}
+          >
+            {periodLabel}
+          </p>
+        ) : null}
+        <p className={staff.rowMeta}>{metaParts.join(" · ")}</p>
+        <div className={staff.rowFooter}>
+          <div className={screen.cardActionsStart}>
+            {unpaid ? (
+              <TouchButton
+                size="md"
+                variant="primary"
+                data-testid={collectTestId}
+                onClick={onCollect}
+              >
+                Collect payment
+              </TouchButton>
+            ) : null}
+            {!unpaid ? (
+              <TouchButton
+                size="md"
+                variant="default"
+                data-testid={`print-invoice-${invoice.id}`}
+                onClick={() => {
+                  const period = invoicePrintPeriod(invoice);
+                  const opened = printInvoice({
+                    id: invoice.id,
+                    amount: invoice.amount,
+                    referralDiscount: invoice.referralDiscount,
+                    studioDiscount: invoice.studioDiscount,
+                    familyDiscount: invoice.familyDiscount,
+                    status: invoice.status,
+                    paymentMethod: invoice.paymentMethod,
+                    paidAt: invoice.paidAt,
+                    billMonth: period.billMonth,
+                    billMonthKeys: period.billMonthKeys,
+                    billPeriodLabel: period.billPeriodLabel,
+                    studentName: invoice.student?.name,
+                    studioName: studio?.name,
+                    studioLogoUrl: studio?.logoUrl,
+                    studioAddress: studio?.address,
+                    gstNumber: studio?.settings?.gstNumber,
+                    gstPercent: invoice.gstPercent,
+                  });
+                  if (!opened) {
+                    toast({
+                      title: "Couldn't open print window",
+                      description:
+                        "Allow pop-ups for this site, then try again.",
+                      variant: "error",
+                    });
+                  }
+                }}
+              >
+                Print invoice
+              </TouchButton>
+            ) : null}
+          </div>
+          {!unpaid && canRefund(invoice) && onRefund ? (
+            <Menu>
+              <TouchButton
+                size="md"
+                variant="quiet"
+                aria-label="More options"
+                data-testid={`refund-invoice-${invoice.id}`}
+              >
+                <Icon name="more-vertical" className={staff.actionIcon} />
+              </TouchButton>
+              <MenuContent onAction={onRefund}>
+                <MenuItem id="refund" variant="danger">
+                  Refund
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          ) : null}
+        </div>
+      </div>
+    </PressableCard>
+  );
+}
+
+function InvoicesPage() {
+  const api = useApi();
+  const studioId = useStudioId();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [monthFilter, setMonthFilter] = useState("ALL");
+  const monthOptions = useMemo(() => {
+    const current = utcMonthKey();
+    return [
+      { id: "ALL", label: "All months" },
+      ...recentUtcMonthKeys(12).map((id) => ({
+        id,
+        label: id === current ? "This month" : formatInvoiceMonthLabel(id),
+      })),
+    ];
+  }, []);
+  const [selectedStudent, setSelectedStudent] = useState<StudioStudent | null>(
+    null,
+  );
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [familyOpenId, setFamilyOpenId] = useState<string | null>(null);
+  const [familyOpenInvoice, setFamilyOpenInvoice] = useState<Invoice | null>(
+    null,
+  );
+  const [payFamily, setPayFamily] = useState<StudioFamily | null>(null);
+  const [payPreselectedIds, setPayPreselectedIds] = useState<string[]>([]);
+  const [refundId, setRefundId] = useState<string | null>(null);
+
+  const invoicesQuery = useQuery({
+    queryKey: ["invoices", studioId],
+    enabled: Boolean(studioId),
+    queryFn: () =>
+      fetchAllPages<Invoice>((cursor) => {
+        const params = new URLSearchParams({ limit: "50" });
+        if (cursor) params.set("cursor", cursor);
+        return api.get<
+          | Invoice[]
+          | { items: Invoice[]; nextCursor: string | null; limit: number }
+        >(`/billing/studio/${studioId}?${params.toString()}`);
+      }),
+  });
+
+  const studioQuery = useQuery({
+    queryKey: ["studio", studioId],
+    enabled: Boolean(studioId),
+    queryFn: () => api.get<Studio>(`/studios/${studioId}`),
+  });
+
+  const familiesQuery = useQuery({
+    queryKey: ["studio-families", studioId],
+    enabled: Boolean(studioId),
+    queryFn: () =>
+      api.get<StudioFamily[]>(`/users/studio/${studioId}/families`),
+  });
+
+  const membersQuery = useQuery({
+    queryKey: ["studio-members", studioId],
+    queryFn: () => api.get<StudioMember[]>(`/users/studio/${studioId}`),
+    enabled: Boolean(familyOpenId),
+  });
+
+  const individualInvoices = useMemo(() => {
+    let items = (invoicesQuery.data ?? []).filter((invoice) => {
+      const kind = invoice.kind ?? "INDIVIDUAL";
+      return kind === "INDIVIDUAL" && invoice.status !== "REFUNDED";
+    });
+    if (selectedStudent) {
+      items = items.filter(
+        (invoice) => invoice.studentId === selectedStudent.id,
+      );
+    }
+    items = items.filter((invoice) =>
+      invoiceMatchesMonth(invoice, monthFilter),
+    );
+    if (statusFilter !== "ALL") {
+      items = items.filter((invoice) => invoice.status === statusFilter);
+    }
+    return items;
+  }, [invoicesQuery.data, selectedStudent, statusFilter, monthFilter]);
+
+  const familyInvoices = useMemo(() => {
+    const items = (invoicesQuery.data ?? []).filter(
+      (invoice) =>
+        (invoice.kind === "COMBINED" ||
+          invoice.kind === "FAMILY" ||
+          (invoice.familyDiscount ?? 0) > 0 ||
+          Boolean(invoice.combineMeta)) &&
+        invoice.status !== "REFUNDED" &&
+        invoiceMatchesMonth(invoice, monthFilter),
+    );
+    return [
+      ...items.filter((invoice) => isUnpaid(invoice.status)),
+      ...items.filter((invoice) => !isUnpaid(invoice.status)),
+    ];
+  }, [invoicesQuery.data, monthFilter]);
+
+  const refundInvoices = useMemo(() => {
+    const items = (invoicesQuery.data ?? []).filter(
+      (invoice) =>
+        (invoice.status === "REFUNDED" || (invoice.refundedAmount ?? 0) > 0) &&
+        invoiceMatchesMonth(invoice, monthFilter),
+    );
+    return [...items].sort((a, b) => {
+      const aAt = a.refundedAt ?? a.paidAt ?? "";
+      const bAt = b.refundedAt ?? b.paidAt ?? "";
+      return bAt.localeCompare(aAt);
+    });
+  }, [invoicesQuery.data, monthFilter]);
+
+  const activeInvoice =
+    (invoicesQuery.data ?? []).find((invoice) => invoice.id === activeId) ??
+    null;
+  const familyInvoice =
+    (invoicesQuery.data ?? []).find((invoice) => invoice.id === familyOpenId) ??
+    (familyOpenInvoice?.id === familyOpenId ? familyOpenInvoice : null);
+  const refundInvoice =
+    (invoicesQuery.data ?? []).find((invoice) => invoice.id === refundId) ??
+    null;
+
+  const resolveStudentName = (studentId: string) =>
+    membersQuery.data?.find((member) => member.id === studentId)?.name;
+
+  function openCollect(invoice: Invoice) {
+    const family = findFamilyForStudent(
+      familiesQuery.data ?? [],
+      invoice.studentId,
+    );
+    if (shouldOfferFamilyCombine(family, invoicesQuery.data ?? [])) {
+      setPayPreselectedIds([invoice.id]);
+      setPayFamily(family);
+      return;
+    }
+    setActiveId(invoice.id);
+  }
+
+  return (
+    <Screen
+      title="Invoices"
+      subtitle="Collect individual payments, combine household invoices, or issue refunds."
+    >
+      <PullToRefresh
+        onRefresh={() =>
+          Promise.all([invoicesQuery.refetch(), familiesQuery.refetch()])
+        }
+      >
+        <div className={screen.filters}>
+          <div className={screen.filterField}>
+            <Select
+              label="Month"
+              selectedKey={monthFilter}
+              onSelectionChange={(key) => {
+                if (key == null) return;
+                setMonthFilter(String(key));
+              }}
+            >
+              <SelectTrigger data-testid="invoice-month-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((option) => (
+                  <SelectItem
+                    key={option.id}
+                    id={option.id}
+                    textValue={option.label}
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Tabs
+          defaultSelectedKey="individual"
+          aria-label="Invoice types"
+          className={screen.tabs}
+        >
+          <TabList className={screen.tabList}>
+            <Tab id="individual" className={screen.tab}>
+              Individual
+            </Tab>
+            <Tab id="family" className={screen.tab}>
+              Family
+            </Tab>
+            <Tab id="refunds" className={screen.tab}>
+              Refunds
+            </Tab>
+          </TabList>
+
+          <TabPanel id="individual">
+            <div className={screen.panel}>
+              <StudentSearchCombobox
+                label="Student"
+                selectedKey={selectedStudent?.id ?? null}
+                onSelectionChange={setSelectedStudent}
+                placeholder="Search student invoices"
+              />
+
+              <FilterChipRow
+                chips={[
+                  { id: "ALL", label: "All" },
+                  { id: "PENDING", label: "Pending" },
+                  { id: "OVERDUE", label: "Overdue" },
+                  { id: "PAID", label: "Paid" },
+                ]}
+                selected={[statusFilter]}
+                onToggle={(id) =>
+                  setStatusFilter((current) =>
+                    current === id ? "ALL" : (id as StatusFilter),
+                  )
+                }
+              />
+
+              {invoicesQuery.isLoading ? <SkeletonCardList count={4} /> : null}
+
+              {invoicesQuery.isError ? (
+                <ErrorState
+                  description={
+                    invoicesQuery.error instanceof Error
+                      ? invoicesQuery.error.message
+                      : "Could not load invoices."
+                  }
+                  action={
+                    <TouchButton
+                      variant="primary"
+                      onClick={() => invoicesQuery.refetch()}
+                    >
+                      Try again
+                    </TouchButton>
+                  }
+                />
+              ) : null}
+
+              {invoicesQuery.data && individualInvoices.length === 0 ? (
+                <EmptyState
+                  title="No invoices"
+                  description={
+                    selectedStudent
+                      ? `No invoices for ${selectedStudent.name} with this filter.`
+                      : monthFilter !== "ALL"
+                        ? `No individual invoices for ${formatInvoiceMonthLabel(monthFilter)}.`
+                        : "Individual invoices appear when subscriptions bill."
+                  }
+                />
+              ) : null}
+
+              {individualInvoices.length > 0 ? (
+                <div className={staff.list}>
+                  {individualInvoices.map((invoice) => (
+                    <InvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      studio={studioQuery.data}
+                      collectTestId={`mark-paid-${invoice.id}`}
+                      onCollect={() => openCollect(invoice)}
+                      onRefund={() => setRefundId(invoice.id)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </TabPanel>
+
+          <TabPanel id="family">
+            <div className={screen.panel}>
+              <p className={staff.sectionTitle}>Family groups</p>
+
+              {familiesQuery.isLoading ? <SkeletonCardList count={2} /> : null}
+
+              {familiesQuery.isError ? (
+                <ErrorState
+                  description={
+                    familiesQuery.error instanceof Error
+                      ? familiesQuery.error.message
+                      : "Could not load family groups."
+                  }
+                  action={
+                    <TouchButton
+                      variant="primary"
+                      onClick={() => familiesQuery.refetch()}
+                    >
+                      Try again
+                    </TouchButton>
+                  }
+                />
+              ) : null}
+
+              {familiesQuery.data && familiesQuery.data.length === 0 ? (
+                <EmptyState
+                  title="No family groups"
+                  description="Families appear when members add family or link children. Tap a group to combine unpaid invoices."
+                />
+              ) : null}
+
+              {(familiesQuery.data ?? []).length > 0 ? (
+                <div className={staff.list}>
+                  {(familiesQuery.data ?? []).map((family) => {
+                    const counts = familySeatCounts(family);
+                    return (
+                      <PressableCard
+                        key={family.ownerId}
+                        data-testid={`family-group-${family.ownerId}`}
+                        onClick={() => {
+                          setPayPreselectedIds([]);
+                          setPayFamily(family);
+                        }}
+                      >
+                        <div className={staff.rowCard}>
+                          <div className={staff.rowWithAvatar}>
+                            <Avatar size="lg" className={staff.trainerAvatar}>
+                              {family.ownerPhotoUrl ? (
+                                <AvatarImage
+                                  src={family.ownerPhotoUrl}
+                                  alt={family.ownerName}
+                                />
+                              ) : null}
+                              <AvatarFallback>
+                                {family.ownerName.slice(0, 1).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className={staff.rowBody}>
+                              <div className={staff.attentionTop}>
+                                <span className={staff.rowTitle}>
+                                  {family.ownerName}
+                                </span>
+                                <Badge variant="neutral">
+                                  {counts.adults} adult
+                                  {counts.adults === 1 ? "" : "s"} ·{" "}
+                                  {counts.kids} kid
+                                  {counts.kids === 1 ? "" : "s"}
+                                </Badge>
+                              </div>
+                              <p className={staff.rowMeta}>
+                                {family.members.length > 0
+                                  ? family.members
+                                      .map((member) => member.name)
+                                      .join(", ")
+                                  : "No linked members yet"}
+                              </p>
+                              <div className={screen.memberStack}>
+                                {family.members.slice(0, 5).map((member) => (
+                                  <span
+                                    key={member.id}
+                                    className={screen.stackAvatar}
+                                  >
+                                    {member.photoUrl ? (
+                                      <img
+                                        src={member.photoUrl}
+                                        alt={member.name}
+                                      />
+                                    ) : (
+                                      member.name.slice(0, 1).toUpperCase()
+                                    )}
+                                  </span>
+                                ))}
+                                <span className={screen.stackLabel}>
+                                  Tap to combine unpaid invoices
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </PressableCard>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <p className={staff.sectionTitle}>Combined family invoices</p>
+
+              {invoicesQuery.data && familyInvoices.length === 0 ? (
+                <EmptyState
+                  title="No combined invoices"
+                  description={
+                    monthFilter !== "ALL"
+                      ? `No combined invoices for ${formatInvoiceMonthLabel(monthFilter)}.`
+                      : "Tap a family group above to combine unpaid household invoices."
+                  }
+                />
+              ) : null}
+
+              {familyInvoices.length > 0 ? (
+                <div className={staff.list}>
+                  {familyInvoices.map((invoice) => (
+                    <InvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      studio={studioQuery.data}
+                      collectTestId={`open-family-${invoice.id}`}
+                      onCollect={() => setFamilyOpenId(invoice.id)}
+                      onRefund={() => setRefundId(invoice.id)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </TabPanel>
+
+          <TabPanel id="refunds">
+            <div className={screen.panel}>
+              {invoicesQuery.isLoading ? <SkeletonCardList count={3} /> : null}
+
+              {invoicesQuery.isError ? (
+                <ErrorState
+                  description={
+                    invoicesQuery.error instanceof Error
+                      ? invoicesQuery.error.message
+                      : "Could not load refunds."
+                  }
+                  action={
+                    <TouchButton
+                      variant="primary"
+                      onClick={() => invoicesQuery.refetch()}
+                    >
+                      Try again
+                    </TouchButton>
+                  }
+                />
+              ) : null}
+
+              {invoicesQuery.data && refundInvoices.length === 0 ? (
+                <EmptyState
+                  title="No refunds"
+                  description={
+                    monthFilter !== "ALL"
+                      ? `No refunds for ${formatInvoiceMonthLabel(monthFilter)}.`
+                      : "Refunded invoices appear here after a full or partial refund."
+                  }
+                />
+              ) : null}
+
+              {refundInvoices.length > 0 ? (
+                <div className={staff.list}>
+                  {refundInvoices.map((invoice) => (
+                    <InvoiceCard
+                      key={invoice.id}
+                      invoice={invoice}
+                      studio={studioQuery.data}
+                      collectTestId={`refund-view-${invoice.id}`}
+                      onCollect={() => undefined}
+                      refundMode
+                      onRefund={() => setRefundId(invoice.id)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </TabPanel>
+        </Tabs>
+      </PullToRefresh>
+
+      <CollectPaymentSheet
+        invoice={activeInvoice}
+        onOpenChange={(open) => {
+          if (!open) setActiveId(null);
+        }}
+        confirmTestId="confirm-mark-paid"
+      />
+
+      <CollectPaymentSheet
+        invoice={familyInvoice}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFamilyOpenId(null);
+            setFamilyOpenInvoice(null);
+          }
+        }}
+        confirmTestId="confirm-open-family-paid"
+        discountTestIdPrefix="family-"
+        resolveStudentName={resolveStudentName}
+      />
+
+      <RefundInvoiceSheet
+        invoice={
+          refundInvoice && canRefund(refundInvoice) ? refundInvoice : null
+        }
+        onOpenChange={(open) => {
+          if (!open) setRefundId(null);
+        }}
+      />
+
+      <FamilyCombineSheet
+        family={payFamily}
+        invoices={invoicesQuery.data ?? []}
+        preselectedInvoiceIds={payPreselectedIds}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPayFamily(null);
+            setPayPreselectedIds([]);
+          }
+        }}
+        onCombined={(invoice) => {
+          setFamilyOpenInvoice(invoice);
+          setFamilyOpenId(invoice.id);
+        }}
+        onPaySingle={(invoice) => {
+          setActiveId(invoice.id);
+        }}
+      />
+    </Screen>
+  );
+}

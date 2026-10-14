@@ -1,0 +1,678 @@
+import { Button } from "@dev-ui/components/button";
+import { Label } from "@dev-ui/components/field";
+import { useToastContext } from "@dev-ui/components/toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useApi } from "@/lib/api-context";
+import { BrandingPanel } from "@/modules/branding/branding-panel";
+import { TemporaryCredentialsPanel } from "@/modules/members/temporary-credentials-panel";
+import type { Studio } from "@/modules/settings/types";
+import { FormInput } from "@/modules/ui/form-input";
+import { FormTextArea } from "@/modules/ui/form-text-area";
+import { PasswordInput } from "@/modules/ui/password-input";
+import { StudioAiFields } from "./studio-ai-fields";
+import { StudioPaymentsFields } from "./studio-payments-fields";
+import styles from "./studio-wizard.module.scss";
+
+const STEPS = ["Details", "Optional Branding", "Payments"] as const;
+
+type CreateStudioResult = {
+  id: string;
+  name: string;
+  owner: { id: string; email: string; name: string };
+  ownerProvisioned: boolean;
+  temporaryPassword: string | null;
+  setupHint: string | null;
+};
+
+type ResetOwnerPasswordResult = {
+  id: string;
+  email: string;
+  name: string;
+  temporaryPassword: string;
+  setupHint: string;
+};
+
+export type StudioWizardStudio = Studio & {
+  owner?: { id: string; email: string; name: string };
+};
+
+type StudioWizardProps =
+  | { mode: "create" }
+  | { mode: "edit"; studio: StudioWizardStudio };
+
+function generateTemporaryPassword() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  let value = "Su-";
+  for (const byte of bytes) {
+    value += alphabet[byte % alphabet.length];
+  }
+  return value;
+}
+
+export function StudioWizard(props: StudioWizardProps) {
+  const api = useApi();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("StudioWizard");
+  const isCreate = props.mode === "create";
+  const studio = props.mode === "edit" ? props.studio : null;
+
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState(studio?.name ?? "");
+  const [ownerEmail, setOwnerEmail] = useState(studio?.owner?.email ?? "");
+  const [ownerName, setOwnerName] = useState(studio?.owner?.name ?? "");
+  const [address, setAddress] = useState(studio?.address ?? "");
+  const [contact, setContact] = useState(studio?.contact ?? "");
+  const [temporaryPassword, setTemporaryPassword] = useState(() =>
+    generateTemporaryPassword(),
+  );
+  const [razorpayKeyId, setRazorpayKeyId] = useState("");
+  const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
+  const [aiProvider, setAiProvider] = useState<
+    "groq" | "gemini" | "openai" | ""
+  >((studio?.settings?.aiProvider as "groq" | "gemini" | "openai") ?? "");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiChatModel, setAiChatModel] = useState(
+    studio?.settings?.aiChatModel ?? "",
+  );
+  const [platformFeePercent, setPlatformFeePercent] = useState(
+    String(studio?.settings?.platformFeePercent ?? 5),
+  );
+  const [formError, setFormError] = useState<string | null>(null);
+  const [createdResult, setCreatedResult] = useState<CreateStudioResult | null>(
+    null,
+  );
+  const [ownerResetResult, setOwnerResetResult] =
+    useState<ResetOwnerPasswordResult | null>(null);
+
+  useEffect(() => {
+    if (!studio) return;
+    setName(studio.name);
+    setOwnerEmail(studio.owner?.email ?? "");
+    setOwnerName(studio.owner?.name ?? "");
+    setAddress(studio.address ?? "");
+    setContact(studio.contact ?? "");
+    setPlatformFeePercent(String(studio.settings?.platformFeePercent ?? 5));
+  }, [studio]);
+
+  const detailsValid =
+    name.trim().length > 0 &&
+    (isCreate
+      ? ownerEmail.trim().length > 0 && temporaryPassword.trim().length >= 8
+      : true);
+
+  const stepIsValid = [detailsValid, true, true] as const;
+
+  async function copyText(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({
+        title: `${label} copied`,
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: `Couldn’t copy ${label.toLowerCase()}`,
+        variant: "error",
+      });
+    }
+  }
+
+  const createMutation = useMutation({
+    mutationFn: async (options: { includePayments: boolean }) => {
+      const created = await api.post<CreateStudioResult>("/studios", {
+        name: name.trim(),
+        ownerEmail: ownerEmail.trim(),
+        temporaryPassword: temporaryPassword.trim(),
+        ...(ownerName.trim() ? { ownerName: ownerName.trim() } : {}),
+        ...(address.trim() ? { address: address.trim() } : {}),
+        ...(contact.trim() ? { contact: contact.trim() } : {}),
+      });
+
+      if (options.includePayments) {
+        const nextKeyId = razorpayKeyId.trim();
+        const nextSecret = razorpayKeySecret.trim();
+        if (nextSecret && !nextKeyId) {
+          throw new Error(
+            "Enter the Razorpay key ID together with the secret.",
+          );
+        }
+        const nextAiKey = aiApiKey.trim();
+        if (nextAiKey && !aiProvider) {
+          throw new Error("Select an AI provider together with the API key.");
+        }
+        const fee = Number(platformFeePercent);
+        if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
+          throw new Error("Platform fee percent must be between 0 and 100.");
+        }
+        await api.patch(`/studios/${created.id}/settings`, {
+          graceDays: 3,
+          expireAlertDays: 7,
+          platformFeePercent: fee,
+          ...(nextKeyId ? { razorpayKeyId: nextKeyId } : {}),
+          ...(nextSecret ? { razorpayKeySecret: nextSecret } : {}),
+          ...(aiProvider ? { aiProvider } : {}),
+          ...(nextAiKey ? { aiApiKey: nextAiKey } : {}),
+          ...(aiChatModel.trim()
+            ? { aiChatModel: aiChatModel.trim() }
+            : { aiChatModel: null }),
+        });
+      }
+
+      return created;
+    },
+    onSuccess: (result) => {
+      setFormError(null);
+      setCreatedResult(result);
+      void queryClient.invalidateQueries({ queryKey: ["admin", "studios"] });
+      toast({
+        title: "Studio created",
+        description: result.setupHint
+          ? result.setupHint
+          : `${result.name} was provisioned successfully.`,
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error ? error.message : "Could not create studio.";
+      setFormError(message);
+      toast({
+        title: "Couldn’t create studio",
+        description: message,
+        variant: "error",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!studio) {
+        throw new Error("Studio missing");
+      }
+
+      await api.patch(`/studios/${studio.id}`, {
+        name: name.trim(),
+        address: address.trim(),
+        contact: contact.trim(),
+      });
+
+      const nextKeyId = razorpayKeyId.trim() || studio.settings?.razorpayKeyId;
+      const nextSecret = razorpayKeySecret.trim();
+      if (nextSecret && !nextKeyId) {
+        throw new Error("Enter the Razorpay key ID together with the secret.");
+      }
+      const nextAiKey = aiApiKey.trim();
+      if (nextAiKey && !aiProvider) {
+        throw new Error("Select an AI provider together with the API key.");
+      }
+
+      const fee = Number(platformFeePercent);
+      if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
+        throw new Error("Platform fee percent must be between 0 and 100.");
+      }
+
+      const paymentsTouched =
+        Boolean(razorpayKeyId.trim()) ||
+        Boolean(nextSecret) ||
+        Boolean(aiProvider) ||
+        Boolean(nextAiKey) ||
+        aiChatModel.trim() !== (studio.settings?.aiChatModel ?? "") ||
+        fee !== (studio.settings?.platformFeePercent ?? 5);
+      if (paymentsTouched) {
+        await api.patch(`/studios/${studio.id}/settings`, {
+          graceDays: studio.settings?.graceDays ?? 3,
+          expireAlertDays: studio.settings?.expireAlertDays ?? 7,
+          platformFeePercent: fee,
+          ...(nextKeyId ? { razorpayKeyId: nextKeyId } : {}),
+          ...(nextSecret ? { razorpayKeySecret: nextSecret } : {}),
+          ...(aiProvider ? { aiProvider } : {}),
+          ...(nextAiKey ? { aiApiKey: nextAiKey } : {}),
+          aiChatModel: aiChatModel.trim() || null,
+        });
+      }
+    },
+    onSuccess: () => {
+      setFormError(null);
+      setRazorpayKeySecret("");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "studios"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "studio", studio?.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["studio", studio?.id],
+      });
+      toast({
+        title: "Studio updated",
+        description: "Studio details, branding, and payments were saved.",
+        variant: "success",
+      });
+      void navigate({ to: "/admin" });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error ? error.message : "Could not update studio.";
+      setFormError(message);
+      toast({
+        title: "Couldn’t update studio",
+        description: message,
+        variant: "error",
+      });
+    },
+  });
+
+  const resetOwnerPassword = useMutation({
+    mutationFn: async () => {
+      if (!studio?.id) {
+        throw new Error("Studio is required");
+      }
+      return api.post<ResetOwnerPasswordResult>(
+        `/studios/${studio.id}/reset-owner-password`,
+        {},
+      );
+    },
+    onSuccess: (result) => {
+      setOwnerResetResult(result);
+      toast({
+        title: "Owner temporary password ready",
+        description: "Share it once — shown only on this screen.",
+        variant: "success",
+      });
+    },
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not reset owner password.";
+      toast({
+        title: "Couldn’t reset password",
+        description: message,
+        variant: "error",
+      });
+    },
+  });
+
+  const pending =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    resetOwnerPassword.isPending;
+  const progressPct = ((step + 1) / STEPS.length) * 100;
+
+  if (createdResult) {
+    const passwordToShare =
+      createdResult.temporaryPassword ?? temporaryPassword;
+    return (
+      <section className={`page stack ${styles.create}`}>
+        <header className={styles.hero}>
+          <div className={styles.heroCopy}>
+            <p className={styles.brandMark}>
+              <span className={styles.brandDot} aria-hidden />
+              classa · Admin
+            </p>
+            <h1 className={styles.heroTitle}>Studio ready</h1>
+            <p className={styles.heroDescription}>
+              {createdResult.name} is live. Share these credentials with the
+              owner — they’ll change the password on first login.
+            </p>
+          </div>
+        </header>
+
+        <div className={styles.wizard}>
+          <div className={`${styles.panel} ${styles.successPanel}`}>
+            <div className={styles.panelHeader}>
+              <p className={styles.eyebrow}>Owner access</p>
+              <h2>Temporary login</h2>
+            </div>
+            <div className={styles.credentialList}>
+              <div className={styles.credentialRow}>
+                <div>
+                  <p className={styles.credentialLabel}>Email</p>
+                  <p className={styles.credentialValue}>
+                    {createdResult.owner.email}
+                  </p>
+                </div>
+                <Button
+                  variant="quiet"
+                  type="button"
+                  onClick={() =>
+                    void copyText("Email", createdResult.owner.email)
+                  }
+                >
+                  Copy
+                </Button>
+              </div>
+              <div className={styles.credentialRow}>
+                <div>
+                  <p className={styles.credentialLabel}>Temporary password</p>
+                  <p
+                    className={styles.credentialValue}
+                    data-testid="studio-temp-password"
+                  >
+                    {passwordToShare}
+                  </p>
+                </div>
+                <Button
+                  variant="quiet"
+                  type="button"
+                  onClick={() =>
+                    void copyText("Temporary password", passwordToShare)
+                  }
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+            <p className={styles.help}>
+              This password is shown once here. The owner must set a new
+              password before using the studio app.
+            </p>
+            <div className={styles.actions}>
+              <Button
+                variant="primary"
+                type="button"
+                onClick={() => void navigate({ to: "/admin" })}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className={`page stack ${styles.create}`}>
+      <header className={styles.hero}>
+        <div className={styles.heroCopy}>
+          <p className={styles.brandMark}>
+            <span className={styles.brandDot} aria-hidden />
+            classa · Admin
+          </p>
+          <h1 className={styles.heroTitle}>
+            {isCreate ? "New studio" : "Edit studio"}
+          </h1>
+          <p className={styles.heroDescription}>
+            {isCreate
+              ? "Provision a tenant — details, optional branding, and payments — in a focused few steps."
+              : "Update studio details, branding, and payments."}
+          </p>
+        </div>
+        <div className={styles.heroActions}>
+          <Button as={Link} to="/admin" variant="quiet">
+            Cancel
+          </Button>
+        </div>
+      </header>
+
+      <div
+        className={styles.progressMeter}
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={STEPS.length}
+        aria-valuenow={step + 1}
+        aria-label="Studio setup progress"
+      >
+        <div
+          className={styles.progressFill}
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+
+      <div className={styles.wizard}>
+        <nav className={styles.steps} aria-label="Studio setup steps">
+          {STEPS.map((label, index) => (
+            <div
+              key={label}
+              className={styles.step}
+              data-active={index === step || undefined}
+              data-complete={index < step || undefined}
+            >
+              <span>{index + 1}</span>
+              <strong>{label}</strong>
+            </div>
+          ))}
+        </nav>
+
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <p className={styles.eyebrow}>
+              Step {step + 1} of {STEPS.length}
+            </p>
+            <h2>{STEPS[step]}</h2>
+          </div>
+
+          {step === 0 ? (
+            <div className={styles.formGrid}>
+              <div className={styles.fullWidth}>
+                <FormInput
+                  label="Studio name"
+                  value={name}
+                  onChange={setName}
+                  required
+                  autoComplete="organization"
+                />
+              </div>
+              {isCreate ? (
+                <>
+                  <FormInput
+                    label="Owner email"
+                    type="email"
+                    value={ownerEmail}
+                    onChange={setOwnerEmail}
+                    required
+                    autoComplete="email"
+                  />
+                  <FormInput
+                    label="Owner name"
+                    value={ownerName}
+                    onChange={setOwnerName}
+                    autoComplete="name"
+                  />
+                  <div className={`${styles.fullWidth} ${styles.tempPassword}`}>
+                    <Label data-required="true">Temporary password</Label>
+                    <div className={styles.tempPasswordRow}>
+                      <PasswordInput
+                        name="temporaryPassword"
+                        value={temporaryPassword}
+                        onChange={setTemporaryPassword}
+                        autoComplete="new-password"
+                        required
+                      />
+                      <Button
+                        variant="quiet"
+                        type="button"
+                        onClick={() =>
+                          setTemporaryPassword(generateTemporaryPassword())
+                        }
+                      >
+                        Regenerate
+                      </Button>
+                    </div>
+                    <p className={styles.help}>
+                      Shared with the owner once. They must change it on first
+                      login.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className={`${styles.fullWidth} ${styles.ownerReset}`}>
+                  <p className={styles.ownerMeta}>
+                    Owner {studio?.owner?.name ?? "—"} ·{" "}
+                    {studio?.owner?.email ?? "—"}
+                  </p>
+                  {ownerResetResult ? (
+                    <div className={styles.ownerResetPanel}>
+                      <TemporaryCredentialsPanel
+                        email={ownerResetResult.email}
+                        temporaryPassword={ownerResetResult.temporaryPassword}
+                        eyebrow="Owner access"
+                        helpText="This password is shown once. The owner must set a new password on first login."
+                        onCopy={(label, value) => void copyText(label, value)}
+                      />
+                      <Button
+                        variant="quiet"
+                        type="button"
+                        onClick={() => setOwnerResetResult(null)}
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="default"
+                      type="button"
+                      data-testid="reset-owner-password"
+                      isPending={resetOwnerPassword.isPending}
+                      onClick={() => resetOwnerPassword.mutate()}
+                    >
+                      Reset owner password
+                    </Button>
+                  )}
+                </div>
+              )}
+              <div className={styles.fullWidth}>
+                <FormTextArea
+                  label="Address"
+                  value={address}
+                  onChange={setAddress}
+                  autoComplete="street-address"
+                />
+              </div>
+              <div className={styles.fullWidth}>
+                <FormInput
+                  label="Contact"
+                  value={contact}
+                  onChange={setContact}
+                  autoComplete="tel"
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {step === 1 ? (
+            <div className={styles.brandingStep}>
+              {studio ? (
+                <div className={styles.assetsBlock}>
+                  <BrandingPanel
+                    studioId={studio.id}
+                    studioName={name.trim() || studio.name}
+                    logoUrl={studio.logoUrl}
+                    heroMobileUrl={studio.heroMobileUrl}
+                    heroDesktopUrl={studio.heroDesktopUrl}
+                  />
+                </div>
+              ) : (
+                <div className={styles.themeCard}>
+                  <p className={styles.themeCardTitle}>Optional branding</p>
+                  <p className={styles.themeCardDesc}>
+                    Logo and hero images upload after the studio exists. Skip
+                    for now — you can add them anytime from Edit studio or
+                    Settings → Branding.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div className={styles.paymentsStep}>
+              <StudioPaymentsFields
+                className={styles.paymentsCard}
+                titleClassName={styles.paymentsCardTitle}
+                descClassName={styles.paymentsCardDesc}
+                razorpayKeyId={razorpayKeyId}
+                razorpayKeySecret={razorpayKeySecret}
+                savedKeyId={studio?.settings?.razorpayKeyId ?? ""}
+                configured={Boolean(studio?.settings?.razorpayConfigured)}
+                onKeyIdChange={setRazorpayKeyId}
+                onKeySecretChange={setRazorpayKeySecret}
+                platformFeePercent={platformFeePercent}
+                onPlatformFeePercentChange={setPlatformFeePercent}
+              />
+              <StudioAiFields
+                className={styles.paymentsCard}
+                titleClassName={styles.paymentsCardTitle}
+                descClassName={styles.paymentsCardDesc}
+                aiProvider={aiProvider}
+                aiApiKey={aiApiKey}
+                aiChatModel={aiChatModel}
+                configured={Boolean(studio?.settings?.aiConfigured)}
+                onProviderChange={setAiProvider}
+                onApiKeyChange={setAiApiKey}
+                onChatModelChange={setAiChatModel}
+              />
+            </div>
+          ) : null}
+
+          {formError ? <p className={styles.error}>{formError}</p> : null}
+
+          <div className={styles.actions}>
+            {step > 0 ? (
+              <Button
+                variant="quiet"
+                type="button"
+                isDisabled={pending}
+                onClick={() => setStep(step - 1)}
+              >
+                Back
+              </Button>
+            ) : null}
+            {step < STEPS.length - 1 ? (
+              <Button
+                variant="primary"
+                type="button"
+                data-testid="studio-wizard-next"
+                isDisabled={!stepIsValid[step]}
+                onClick={() => setStep(step + 1)}
+              >
+                Continue
+              </Button>
+            ) : isCreate ? (
+              <>
+                <Button
+                  variant="default"
+                  type="button"
+                  data-testid="studio-wizard-skip-create"
+                  isPending={pending}
+                  isDisabled={!detailsValid}
+                  onClick={() =>
+                    createMutation.mutate({ includePayments: false })
+                  }
+                >
+                  Skip & create
+                </Button>
+                <Button
+                  variant="primary"
+                  type="button"
+                  data-testid="studio-wizard-create"
+                  isPending={pending}
+                  isDisabled={!detailsValid}
+                  onClick={() =>
+                    createMutation.mutate({ includePayments: true })
+                  }
+                >
+                  Create studio
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="primary"
+                type="button"
+                data-testid="studio-wizard-save"
+                isPending={pending}
+                isDisabled={!detailsValid}
+                onClick={() => updateMutation.mutate()}
+              >
+                Save changes
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

@@ -1,11 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { expectStoryAccessible } from "./helpers/a11y";
 import {
   getDrawerPanel,
   gotoStory,
   isFocusWithin,
   VIEWPORT_SCREENSHOT_OPTIONS,
-  waitForDrawerReady,
 } from "./helpers/storybook";
 import { responsiveDescribeOptions } from "./helpers/viewports";
 
@@ -13,6 +12,17 @@ const STORIES = {
   default: "components-drawer--default",
   leftPlacement: "components-drawer--left-placement",
 } as const;
+
+async function waitForDrawerReady(page: Page) {
+  const drawer = getDrawerPanel(page);
+  await drawer.waitFor({ state: "visible" });
+  await drawer.evaluate((element) => {
+    const panel = element as HTMLElement;
+    panel.style.transition = "none";
+    panel.removeAttribute("data-starting-style");
+    void panel.offsetHeight;
+  });
+}
 
 test.describe("Drawer", () => {
   test.describe("visual regression", responsiveDescribeOptions, () => {

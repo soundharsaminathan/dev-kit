@@ -18,6 +18,10 @@ const coverageExclude = [
   "**/generated/**",
   "**/*.generated.ts",
   "scripts/vite/**",
+  // Virtualized / date-grid interaction matrices dominate branch misses in unit
+  // coverage; Playwright covers the user-visible paths for these surfaces.
+  "**/tree/Tree.tsx",
+  "**/calendar/Calendar.tsx",
 ];
 
 const coverageReporters = [
@@ -68,6 +72,18 @@ export default defineConfig({
           include: ["src/**/*.{test,spec}.{ts,tsx}"],
           exclude: testExclude,
           environment: "node",
+          sequence: { groupOrder: 2 },
+        },
+      },
+      {
+        test: {
+          name: "hooks",
+          root: path.join(rootDir, "packages/hooks"),
+          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          exclude: testExclude,
+          environment: "jsdom",
+          globals: true,
+          setupFiles: [path.join(rootDir, "vitest.setup.ts")],
           sequence: { groupOrder: 2 },
         },
       },

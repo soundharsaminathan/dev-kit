@@ -1,0 +1,1355 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  BookingStatus,
+  BookingType,
+  FamilyMemberKind,
+  InvoiceStatus,
+  MembershipStatus,
+  SessionStatus,
+  UserRole,
+} from "../generated/prisma/client";
+import {
+  assertBatchHasSeat,
+  expireStalePaymentHolds,
+  lockBatchRow,
+  paymentHoldExpiresAt,
+} from "../batches/batch-capacity";
+import { ScheduleConflictService } from "../calendar/schedule-conflict.service";
+import {
+  branchIsOpenAt,
+  canRefundPaidMarketplaceBooking,
+  childAudienceBlocked,
+  marketplaceBookingNeedsMembership,
+  marketplaceBookingRequiresPayment,
+  PRIVATE_BUFFER_MINUTES,
+  type ClassAudience,
+} from "../discover/marketplace.contract";
+import { MembershipsService } from "../memberships/memberships.service";
+import { RazorpayService } from "../payments/razorpay.service";
+import { PrismaService } from "../prisma/prisma.service";
+import {
+  type DecryptedUser,
+  UserCryptoService,
+  userPiiSelect,
+} from "../users/user-crypto.service";
+
+const STUDIO_CANCEL_ROLES: UserRole[] = [
+  UserRole.OWNER,
+  UserRole.STAFF,
+  UserRole.SYSTEM_ADMIN,
+];
+
+export type UpdateBookingStatusInput = {
+  status: BookingStatus;
+  sessionId?: string;
+  startsAt?: string;
+  endsAt?: string;
+  trainerId?: string;
+};
+
+export type CreateBookingOptions = {
+  requirePayment?: boolean;
+};
+
+export type ConfirmPaymentInput = {
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+};
+
+export type CreatePaymentOrderResult =
+  | { mode: "demo" }
+  | {
+      mode: "razorpay";
+      keyId: string;
+      orderId: string;
+      amount: number;
+      currency: string;
+    };
+
+@Injectable()
+export class BookingsService {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(MembershipsService)
+    private readonly memberships: MembershipsService,
+    @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(ScheduleConflictService)
+    private readonly scheduleConflicts: ScheduleConflictService,
+    @Inject(RazorpayService) private readonly razorpay: RazorpayService,
+  ) {}
+
+  async listForStudent(studentId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+    });
+
+    return this.prisma.booking.findMany({
+      where: { studentId },
+      orderBy: { id: "desc" },
+      include: {
+        batch: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+  }
+
+  async listForStudio(studioId: string) {
+    await this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+    });
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        studioId,
+        status: { not: BookingStatus.AWAITING_PAYMENT },
+      },
+      orderBy: { id: "desc" },
+      include: {
+        student: {
+          select: { id: true, ...userPiiSelect },
+        },
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            trainers: { select: { trainerId: true } },
+          },
+        },
+      },
+    });
+
+    return bookings.map((booking) => ({
+      ...booking,
+      student: this.crypto.decryptUser(booking.student),
+    }));
+  }
+
+  async getById(id: string, actor: DecryptedUser) {
+    await this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+    });
+
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        batch: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException("Booking not found");
+    }
+
+    await this.assertCanAccessBooking(booking.studentId, actor);
+    return booking;
+  }
+
+  async create(
+    data: {
+      studioId: string;
+      studentId: string;
+      type: BookingType;
+      batchId?: string;
+      sessionId?: string;
+      trainerId?: string;
+      branchId?: string;
+      notes?: string;
+      startsAt?: string;
+      endsAt?: string;
+    },
+    options: CreateBookingOptions = {},
+  ) {
+    const overdue = await this.prisma.invoice.findFirst({
+      where: {
+        studentId: data.studentId,
+        status: InvoiceStatus.OVERDUE,
+      },
+    });
+
+    if (overdue && data.type !== BookingType.TRIAL) {
+      throw new ForbiddenException(
+        "Bookings are frozen while the student has an overdue invoice",
+      );
+    }
+
+    if (data.startsAt && data.endsAt) {
+      this.assertValidRange(data.startsAt, data.endsAt);
+    }
+
+    const studio = await this.prisma.studio.findUnique({
+      where: { id: data.studioId },
+      select: {
+        id: true,
+        settings: {
+          select: {
+            bookingTrial: true,
+            bookingPrivate: true,
+            bookingFloorHire: true,
+            privateSessionPaise: true,
+            privateSessionMinutes: true,
+            floorHirePaise: true,
+            floorHireSlotMinutes: true,
+          },
+        },
+      },
+    });
+    if (!studio) {
+      throw new BadRequestException("Studio not found");
+    }
+    const settings = studio.settings ?? {
+      bookingTrial: true,
+      bookingPrivate: false,
+      bookingFloorHire: false,
+      privateSessionPaise: null,
+      privateSessionMinutes: 60,
+      floorHirePaise: null,
+      floorHireSlotMinutes: 60,
+    };
+
+    let batchId = data.batchId;
+    const sessionId = data.sessionId;
+    let startsAt = data.startsAt;
+    let endsAt = data.endsAt;
+    let trainerId = data.trainerId;
+    let branchId = data.branchId;
+    let classAudience: ClassAudience | null = null;
+
+    if (data.type === BookingType.TRIAL) {
+      if (settings.bookingTrial === false) {
+        throw new BadRequestException("Trials are not available at this studio");
+      }
+      const isPersonalTimed = Boolean(startsAt && endsAt) && !sessionId;
+      if (!sessionId && !isPersonalTimed) {
+        throw new BadRequestException(
+          "Trial bookings require a sessionId (or a personal startsAt/endsAt)",
+        );
+      }
+      if (sessionId) {
+        const session = await this.prisma.session.findUnique({
+          where: { id: sessionId },
+          include: {
+            batch: {
+              select: {
+                id: true,
+                studioId: true,
+                active: true,
+                classAudience: true,
+              },
+            },
+          },
+        });
+        if (
+          !session ||
+          session.status === SessionStatus.CANCELLED ||
+          !session.batch.active ||
+          session.batch.studioId !== data.studioId
+        ) {
+          throw new BadRequestException(
+            "Select a trial session from this studio",
+          );
+        }
+        batchId = session.batchId;
+        startsAt = session.startsAt.toISOString();
+        endsAt = session.endsAt.toISOString();
+        classAudience = session.batch.classAudience;
+      }
+    } else if (
+      !marketplaceBookingNeedsMembership(data.type, settings)
+    ) {
+      if (data.type === BookingType.PRIVATE) {
+        const resolved = await this.assertMarketplacePrivate({
+          studioId: data.studioId,
+          trainerId,
+          branchId,
+          batchId,
+          startsAt,
+          endsAt,
+        });
+        trainerId = resolved.trainerId;
+        branchId = resolved.branchId;
+        startsAt = resolved.startsAt;
+        endsAt = resolved.endsAt;
+      } else if (data.type === BookingType.FLOOR_HIRE) {
+        const resolved = await this.assertMarketplaceFloorHire({
+          studioId: data.studioId,
+          branchId,
+          startsAt,
+          endsAt,
+        });
+        trainerId = undefined;
+        branchId = resolved.branchId;
+        startsAt = resolved.startsAt;
+        endsAt = resolved.endsAt;
+      }
+    } else {
+      const activeMembership = await this.prisma.membership.findFirst({
+        where: {
+          status: MembershipStatus.ACTIVE,
+          periodEnd: { gte: new Date() },
+          coveredStudents: { some: { studentId: data.studentId } },
+        },
+      });
+
+      if (!activeMembership) {
+        throw new BadRequestException(
+          "An active membership is required for this booking",
+        );
+      }
+
+      if (sessionId) {
+        const session = await this.prisma.session.findUnique({
+          where: { id: sessionId },
+        });
+
+        if (!session) {
+          throw new BadRequestException("Session not found");
+        }
+
+        const covers = await this.memberships.findActiveForBatch(
+          data.studentId,
+          session.batchId,
+        );
+
+        if (!covers) {
+          throw new BadRequestException(
+            "Active membership does not cover this session batch",
+          );
+        }
+        batchId = batchId ?? session.batchId;
+      }
+    }
+
+    if (classAudience) {
+      const forChild = await this.isMarketplaceChild(data.studentId);
+      const blocked = childAudienceBlocked({ forChild, classAudience });
+      if (blocked) {
+        throw new BadRequestException(blocked);
+      }
+    }
+
+    await this.assertBookingScheduleConflicts({
+      ...data,
+      batchId,
+      sessionId,
+      trainerId,
+      branchId,
+      startsAt,
+      endsAt,
+      bufferMinutes:
+        data.type === BookingType.PRIVATE ? PRIVATE_BUFFER_MINUTES : 0,
+    });
+
+    const pricePaise = await this.resolveMarketplacePricePaise({
+      type: data.type,
+      studioId: data.studioId,
+      trainerId,
+      settings,
+    });
+    // Trials are free — never put student/parent trial requests on a payment hold.
+    const requirePayment =
+      data.type !== BookingType.TRIAL &&
+      (options.requirePayment === true ||
+        marketplaceBookingRequiresPayment(pricePaise));
+    const status = requirePayment
+      ? BookingStatus.AWAITING_PAYMENT
+      : BookingStatus.PENDING;
+    const holdExpiresAt = requirePayment ? paymentHoldExpiresAt() : null;
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        if (batchId && data.type !== BookingType.TRIAL) {
+          await lockBatchRow(tx, batchId);
+          await expireStalePaymentHolds(tx, batchId);
+
+          const batch = await tx.batch.findUnique({
+            where: { id: batchId },
+            select: { id: true, studioId: true, capacity: true },
+          });
+          if (!batch || batch.studioId !== data.studioId) {
+            throw new BadRequestException("Select a batch from this studio");
+          }
+
+          if (data.type !== BookingType.PRIVATE) {
+            await assertBatchHasSeat(
+              tx,
+              batchId,
+              batch.capacity,
+              data.studentId,
+            );
+          }
+
+          const existingOpen = await tx.booking.findFirst({
+            where: {
+              batchId,
+              studentId: data.studentId,
+              OR: [
+                {
+                  status: {
+                    in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                  },
+                },
+                {
+                  status: BookingStatus.AWAITING_PAYMENT,
+                  paymentHoldExpiresAt: { gt: new Date() },
+                },
+              ],
+            },
+            select: { id: true, status: true },
+          });
+          if (existingOpen) {
+            throw new ConflictException(
+              existingOpen.status === BookingStatus.AWAITING_PAYMENT
+                ? "Complete payment for your existing booking hold first"
+                : existingOpen.status === BookingStatus.PENDING
+                  ? "You already have a booking request waiting for studio approval"
+                  : "You already have a confirmed booking for this class",
+            );
+          }
+        }
+
+        if (data.type === BookingType.TRIAL && sessionId) {
+          const existingTrial = await tx.booking.findFirst({
+            where: {
+              sessionId,
+              studentId: data.studentId,
+              type: BookingType.TRIAL,
+              OR: [
+                {
+                  status: {
+                    in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+                  },
+                },
+                {
+                  status: BookingStatus.AWAITING_PAYMENT,
+                  paymentHoldExpiresAt: { gt: new Date() },
+                },
+              ],
+            },
+            select: { id: true, status: true },
+          });
+          if (existingTrial) {
+            throw new ConflictException(
+              existingTrial.status === BookingStatus.PENDING
+                ? "You already have a trial request for this session"
+                : "You already have a confirmed trial for this session",
+            );
+          }
+        }
+
+        return tx.booking.create({
+          data: {
+            studioId: data.studioId,
+            studentId: data.studentId,
+            type: data.type,
+            batchId,
+            sessionId,
+            trainerId,
+            branchId,
+            notes: data.notes,
+            startsAt: startsAt ? new Date(startsAt) : undefined,
+            endsAt: endsAt ? new Date(endsAt) : undefined,
+            status,
+            paymentHoldExpiresAt: holdExpiresAt,
+          },
+          include: {
+            batch: { select: { id: true, name: true } },
+          },
+        });
+      },
+      { timeout: 20_000 },
+    );
+  }
+
+  async createPaymentOrder(
+    id: string,
+    actor: DecryptedUser,
+  ): Promise<CreatePaymentOrderResult> {
+    await this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+    });
+
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        studio: { include: { settings: true } },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException("Booking not found");
+    }
+
+    await this.assertCanAccessBooking(booking.studentId, actor);
+    this.assertAwaitingPaymentHold(booking);
+
+    const settings = booking.studio.settings;
+    if (!this.razorpay.isEnabled(settings)) {
+      return { mode: "demo" };
+    }
+
+    const amount =
+      (await this.resolveMarketplacePricePaise({
+        type: booking.type,
+        studioId: booking.studioId,
+        trainerId: booking.trainerId,
+        settings,
+      })) ?? this.razorpay.bookingAmountPaise();
+    const keyId = this.razorpay.keyId(settings);
+
+    if (booking.razorpayOrderId) {
+      return {
+        mode: "razorpay",
+        keyId,
+        orderId: booking.razorpayOrderId,
+        amount,
+        currency: "INR",
+      };
+    }
+
+    const order = await this.razorpay.createOrder(
+      {
+        receipt: booking.id,
+        amountPaise: amount,
+        notes: { bookingId: booking.id },
+      },
+      settings,
+    );
+
+    await this.prisma.booking.update({
+      where: { id },
+      data: { razorpayOrderId: order.orderId },
+    });
+
+    return {
+      mode: "razorpay",
+      keyId,
+      orderId: order.orderId,
+      amount: order.amount,
+      currency: order.currency,
+    };
+  }
+
+  async confirmPayment(
+    id: string,
+    actor: DecryptedUser,
+    payment: ConfirmPaymentInput = {},
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      await expireStalePaymentHolds(tx);
+
+      const booking = await tx.booking.findUnique({
+        where: { id },
+        include: {
+          studio: { include: { settings: true } },
+        },
+      });
+      if (!booking) {
+        throw new NotFoundException("Booking not found");
+      }
+
+      await this.assertCanAccessBooking(booking.studentId, actor);
+
+      if (booking.status === BookingStatus.PENDING) {
+        return booking;
+      }
+
+      if (booking.status !== BookingStatus.AWAITING_PAYMENT) {
+        throw new BadRequestException("Booking is not awaiting payment");
+      }
+
+      if (
+        !booking.paymentHoldExpiresAt ||
+        booking.paymentHoldExpiresAt.getTime() <= Date.now()
+      ) {
+        await tx.booking.update({
+          where: { id },
+          data: {
+            status: BookingStatus.CANCELLED,
+            paymentHoldExpiresAt: null,
+          },
+        });
+        throw new BadRequestException(
+          "Payment window expired. Please book again.",
+        );
+      }
+
+      const settings = booking.studio.settings;
+      const razorpayEnabled = this.razorpay.isEnabled(settings);
+      let razorpayPaymentId: string | undefined;
+
+      if (razorpayEnabled) {
+        const orderId = payment.razorpay_order_id?.trim();
+        const paymentId = payment.razorpay_payment_id?.trim();
+        const signature = payment.razorpay_signature?.trim();
+
+        if (!orderId || !paymentId || !signature) {
+          throw new BadRequestException(
+            "Razorpay payment details are required",
+          );
+        }
+
+        if (!booking.razorpayOrderId || booking.razorpayOrderId !== orderId) {
+          throw new BadRequestException(
+            "Razorpay order does not match this booking",
+          );
+        }
+
+        const valid = this.razorpay.verifyPaymentSignature(
+          {
+            orderId,
+            paymentId,
+            signature,
+          },
+          settings,
+        );
+        if (!valid) {
+          throw new BadRequestException("Invalid Razorpay payment signature");
+        }
+
+        razorpayPaymentId = paymentId;
+      }
+
+      if (booking.batchId && booking.type !== BookingType.PRIVATE) {
+        await lockBatchRow(tx, booking.batchId);
+        const batch = await tx.batch.findUnique({
+          where: { id: booking.batchId },
+          select: { capacity: true },
+        });
+        if (!batch) {
+          throw new BadRequestException("Batch not found");
+        }
+        await assertBatchHasSeat(
+          tx,
+          booking.batchId,
+          batch.capacity,
+          booking.studentId,
+        );
+      }
+
+      return tx.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.PENDING,
+          paymentHoldExpiresAt: null,
+          ...(razorpayPaymentId ? { razorpayPaymentId } : {}),
+        },
+        include: {
+          batch: { select: { id: true, name: true } },
+        },
+      });
+    });
+  }
+
+  async abandonPayment(id: string, actor: DecryptedUser) {
+    return this.prisma.$transaction(async (tx) => {
+      const booking = await tx.booking.findUnique({ where: { id } });
+      if (!booking) {
+        throw new NotFoundException("Booking not found");
+      }
+
+      await this.assertCanAccessBooking(booking.studentId, actor);
+
+      if (booking.status !== BookingStatus.AWAITING_PAYMENT) {
+        return booking;
+      }
+
+      return tx.booking.update({
+        where: { id },
+        data: {
+          status: BookingStatus.CANCELLED,
+          paymentHoldExpiresAt: null,
+          razorpayOrderId: null,
+          razorpayPaymentId: null,
+        },
+        include: {
+          batch: { select: { id: true, name: true } },
+        },
+      });
+    });
+  }
+
+  async cancelBooking(id: string, actor: DecryptedUser, reason?: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        studio: { include: { settings: true } },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException("Booking not found");
+    }
+
+    await this.assertCanAccessBooking(booking.studentId, actor);
+    const studioInitiated = STUDIO_CANCEL_ROLES.includes(actor.role);
+
+    if (studioInitiated) {
+      if (
+        booking.status !== BookingStatus.PENDING &&
+        booking.status !== BookingStatus.CONFIRMED &&
+        booking.status !== BookingStatus.AWAITING_PAYMENT
+      ) {
+        throw new BadRequestException(
+          "Only pending, confirmed, or awaiting-payment bookings can be cancelled",
+        );
+      }
+    } else if (
+      booking.status !== BookingStatus.PENDING &&
+      booking.status !== BookingStatus.CONFIRMED
+    ) {
+      throw new BadRequestException(
+        "Only pending or confirmed bookings can be cancelled",
+      );
+    }
+
+    if (
+      !studioInitiated &&
+      booking.startsAt &&
+      booking.startsAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException("This booking has already started");
+    }
+
+    const notes =
+      reason?.trim() && reason.trim().length > 0
+        ? [booking.notes, `Cancelled: ${reason.trim()}`]
+            .filter(Boolean)
+            .join("\n")
+        : booking.notes;
+
+    await this.refundMarketplaceBookingIfNeeded(booking, {
+      studioInitiated,
+    });
+
+    return this.prisma.booking.update({
+      where: { id },
+      data: {
+        status: BookingStatus.CANCELLED,
+        paymentHoldExpiresAt: null,
+        ...(notes !== booking.notes ? { notes } : {}),
+      },
+      include: {
+        batch: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async requestReschedule(
+    id: string,
+    actor: DecryptedUser,
+    input: {
+      sessionId?: string;
+      startsAt?: string;
+      endsAt?: string;
+      notes?: string;
+    },
+  ) {
+    const hasSession = Boolean(input.sessionId);
+    const hasRange = Boolean(input.startsAt || input.endsAt);
+
+    if (hasSession === hasRange) {
+      throw new BadRequestException(
+        "Provide either sessionId or both startsAt and endsAt",
+      );
+    }
+
+    if (input.startsAt && input.endsAt) {
+      this.assertValidRange(input.startsAt, input.endsAt);
+    } else if (input.startsAt || input.endsAt) {
+      throw new BadRequestException("Both startsAt and endsAt are required");
+    }
+
+    const existing = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        batch: { select: { id: true, name: true } },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException("Booking not found");
+    }
+
+    await this.assertCanAccessBooking(existing.studentId, actor);
+
+    if (
+      existing.status !== BookingStatus.PENDING &&
+      existing.status !== BookingStatus.CONFIRMED
+    ) {
+      throw new BadRequestException(
+        "Only pending or confirmed bookings can be rescheduled",
+      );
+    }
+
+    const sessionId = input.sessionId;
+    let startsAt = input.startsAt;
+    let endsAt = input.endsAt;
+
+    if (sessionId) {
+      const session = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+      });
+      if (!session || session.status === SessionStatus.CANCELLED) {
+        throw new BadRequestException("Session not found");
+      }
+      if (existing.batchId && session.batchId !== existing.batchId) {
+        throw new BadRequestException(
+          "Reschedule session must belong to the same class",
+        );
+      }
+      startsAt = session.startsAt.toISOString();
+      endsAt = session.endsAt.toISOString();
+    }
+
+    await this.assertBookingScheduleConflicts({
+      studentId: existing.studentId,
+      batchId: existing.batchId ?? undefined,
+      sessionId,
+      trainerId: existing.trainerId ?? undefined,
+      startsAt,
+      endsAt,
+      excludeBookingIds: [id],
+    });
+
+    const nextStatus =
+      existing.status === BookingStatus.CONFIRMED
+        ? BookingStatus.PENDING
+        : existing.status;
+
+    const notes =
+      input.notes?.trim() && input.notes.trim().length > 0
+        ? [existing.notes, `Reschedule request: ${input.notes.trim()}`]
+            .filter(Boolean)
+            .join("\n")
+        : existing.notes;
+
+    return this.prisma.booking.update({
+      where: { id },
+      data: {
+        status: nextStatus,
+        sessionId: hasSession ? sessionId! : null,
+        ...(startsAt && endsAt
+          ? {
+              startsAt: new Date(startsAt),
+              endsAt: new Date(endsAt),
+            }
+          : {}),
+        ...(notes !== existing.notes ? { notes } : {}),
+      },
+      include: {
+        batch: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async updateStatus(id: string, input: UpdateBookingStatusInput) {
+    const { status, sessionId, startsAt, endsAt, trainerId } = input;
+
+    if (startsAt && endsAt) {
+      this.assertValidRange(startsAt, endsAt);
+    } else if (startsAt || endsAt) {
+      throw new BadRequestException("Both startsAt and endsAt are required");
+    }
+
+    let nextSession: {
+      id: string;
+      batchId: string;
+      startsAt: Date;
+      endsAt: Date;
+      batch: { studioId: string; active: boolean };
+    } | null = null;
+
+    if (sessionId) {
+      const session = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+        include: {
+          batch: { select: { studioId: true, active: true } },
+        },
+      });
+      if (!session) {
+        throw new BadRequestException("Session not found");
+      }
+      nextSession = session;
+    }
+
+    const existing = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        session: {
+          include: {
+            batch: {
+              include: {
+                trainers: { select: { trainerId: true } },
+              },
+            },
+          },
+        },
+        batch: {
+          include: {
+            trainers: { select: { trainerId: true } },
+          },
+        },
+      },
+    });
+    if (!existing) {
+      throw new BadRequestException("Booking not found");
+    }
+
+    if (
+      existing.status === BookingStatus.AWAITING_PAYMENT &&
+      status !== BookingStatus.CANCELLED
+    ) {
+      throw new BadRequestException(
+        "Cannot review a booking that is still awaiting payment",
+      );
+    }
+
+    if (status === BookingStatus.CANCELLED) {
+      const paid = await this.prisma.booking.findUnique({
+        where: { id },
+        include: { studio: { include: { settings: true } } },
+      });
+      if (paid) {
+        await this.refundMarketplaceBookingIfNeeded(paid, {
+          studioInitiated: true,
+        });
+      }
+    }
+
+    if (
+      nextSession &&
+      existing.type === BookingType.TRIAL &&
+      (!nextSession.batch.active ||
+        nextSession.batch.studioId !== existing.studioId)
+    ) {
+      throw new BadRequestException("Select a trial session from this studio");
+    }
+
+    const nextStatus = status;
+    const resolvedStartsAt =
+      startsAt ??
+      (nextSession ? nextSession.startsAt.toISOString() : undefined) ??
+      existing.startsAt?.toISOString();
+    const resolvedEndsAt =
+      endsAt ??
+      (nextSession ? nextSession.endsAt.toISOString() : undefined) ??
+      existing.endsAt?.toISOString();
+    const resolvedBatchId =
+      nextSession?.batchId ?? existing.batchId ?? undefined;
+    const schedulingTouched =
+      sessionId !== undefined ||
+      trainerId !== undefined ||
+      (startsAt !== undefined && endsAt !== undefined);
+    const becomingConfirmed =
+      nextStatus === BookingStatus.CONFIRMED &&
+      existing.status !== BookingStatus.CONFIRMED;
+
+    if (becomingConfirmed || schedulingTouched) {
+      await this.assertBookingScheduleConflicts({
+        studentId: existing.studentId,
+        batchId: resolvedBatchId,
+        sessionId: sessionId ?? existing.sessionId ?? undefined,
+        trainerId: trainerId ?? existing.trainerId ?? undefined,
+        startsAt: resolvedStartsAt,
+        endsAt: resolvedEndsAt,
+        excludeBookingIds: [id],
+      });
+    }
+
+    const schedulePatch = {
+      ...(sessionId !== undefined ? { sessionId } : {}),
+      ...(nextSession
+        ? {
+            batchId: nextSession.batchId,
+            startsAt: nextSession.startsAt,
+            endsAt: nextSession.endsAt,
+          }
+        : startsAt && endsAt
+          ? {
+              startsAt: new Date(startsAt),
+              endsAt: new Date(endsAt),
+            }
+          : {}),
+      ...(trainerId !== undefined ? { trainerId } : {}),
+    };
+
+    if (
+      becomingConfirmed &&
+      resolvedBatchId &&
+      existing.type !== BookingType.PRIVATE &&
+      existing.type !== BookingType.TRIAL
+    ) {
+      return this.prisma.$transaction(async (tx) => {
+        await lockBatchRow(tx, resolvedBatchId);
+        const batch = await tx.batch.findUnique({
+          where: { id: resolvedBatchId },
+          select: { capacity: true },
+        });
+        if (!batch) {
+          throw new BadRequestException("Batch not found");
+        }
+        await assertBatchHasSeat(
+          tx,
+          resolvedBatchId,
+          batch.capacity,
+          existing.studentId,
+        );
+
+        return tx.booking.update({
+          where: { id },
+          data: {
+            status,
+            ...schedulePatch,
+          },
+        });
+      });
+    }
+
+    return this.prisma.booking.update({
+      where: { id },
+      data: {
+        status,
+        ...schedulePatch,
+      },
+    });
+  }
+
+  private assertAwaitingPaymentHold(booking: {
+    status: BookingStatus;
+    paymentHoldExpiresAt: Date | null;
+  }) {
+    if (booking.status !== BookingStatus.AWAITING_PAYMENT) {
+      throw new BadRequestException("Booking is not awaiting payment");
+    }
+    if (
+      !booking.paymentHoldExpiresAt ||
+      booking.paymentHoldExpiresAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException(
+        "Payment window expired. Please book again.",
+      );
+    }
+  }
+
+  private async assertCanAccessBooking(
+    studentId: string,
+    actor: DecryptedUser,
+  ) {
+    const staffRoles: UserRole[] = [
+      UserRole.OWNER,
+      UserRole.STAFF,
+      UserRole.TRAINER,
+    ];
+    if (staffRoles.includes(actor.role) || actor.id === studentId) {
+      return;
+    }
+
+    const [familyLink, parentLink] = await Promise.all([
+      this.prisma.familyMember.findUnique({
+        where: {
+          ownerUserId_memberUserId: {
+            ownerUserId: actor.id,
+            memberUserId: studentId,
+          },
+        },
+      }),
+      this.prisma.parentChild.findUnique({
+        where: {
+          parentUserId_childUserId: {
+            parentUserId: actor.id,
+            childUserId: studentId,
+          },
+        },
+      }),
+    ]);
+
+    if (!familyLink && !parentLink) {
+      throw new ForbiddenException("Not allowed to access this booking");
+    }
+  }
+
+  private async assertBookingScheduleConflicts(data: {
+    studentId: string;
+    batchId?: string;
+    sessionId?: string;
+    trainerId?: string;
+    branchId?: string;
+    startsAt?: string;
+    endsAt?: string;
+    excludeBookingIds?: string[];
+    bufferMinutes?: number;
+  }) {
+    if (data.sessionId) {
+      const session = await this.prisma.session.findUnique({
+        where: { id: data.sessionId },
+        include: {
+          batch: {
+            include: {
+              trainers: { select: { trainerId: true } },
+            },
+          },
+        },
+      });
+      if (!session || session.status === SessionStatus.CANCELLED) {
+        throw new BadRequestException("Session not found");
+      }
+
+      const trainerIds = [
+        ...new Set([
+          ...(data.trainerId ? [data.trainerId] : []),
+          ...session.batch.trainers.map((trainer) => trainer.trainerId),
+        ]),
+      ];
+
+      await this.scheduleConflicts.assertNoConflicts({
+        intervals: [{ startsAt: session.startsAt, endsAt: session.endsAt }],
+        studentIds: [data.studentId],
+        trainerIds,
+        branchId: session.batch.branchId,
+        excludeSessionIds: [session.id],
+        excludeBookingIds: data.excludeBookingIds,
+        bufferMinutes: data.bufferMinutes,
+      });
+      return;
+    }
+
+    if (data.startsAt && data.endsAt) {
+      const startsAt = new Date(data.startsAt);
+      const endsAt = new Date(data.endsAt);
+      let branchId = data.branchId;
+      const trainerIds = [...(data.trainerId ? [data.trainerId] : [])];
+
+      if (data.batchId) {
+        const batch = await this.prisma.batch.findUnique({
+          where: { id: data.batchId },
+          include: { trainers: { select: { trainerId: true } } },
+        });
+        if (batch) {
+          branchId = branchId ?? batch.branchId;
+          for (const trainer of batch.trainers) {
+            if (!trainerIds.includes(trainer.trainerId)) {
+              trainerIds.push(trainer.trainerId);
+            }
+          }
+        }
+      }
+
+      await this.scheduleConflicts.assertNoConflicts({
+        intervals: [{ startsAt, endsAt }],
+        studentIds: [data.studentId],
+        trainerIds,
+        branchId,
+        excludeBookingIds: data.excludeBookingIds,
+        bufferMinutes: data.bufferMinutes,
+      });
+      return;
+    }
+
+    if (data.batchId) {
+      await this.scheduleConflicts.assertStudentAvailableForBatch(
+        data.studentId,
+        data.batchId,
+      );
+    }
+  }
+
+  private assertValidRange(startsAt: string, endsAt: string) {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new BadRequestException("Invalid startsAt or endsAt");
+    }
+    if (end <= start) {
+      throw new BadRequestException("endsAt must be after startsAt");
+    }
+  }
+
+  private async isMarketplaceChild(studentId: string) {
+    const [family, parent] = await Promise.all([
+      this.prisma.familyMember.findFirst({
+        where: { memberUserId: studentId },
+        select: { kind: true },
+      }),
+      this.prisma.parentChild.findFirst({
+        where: { childUserId: studentId },
+        select: { id: true },
+      }),
+    ]);
+    return Boolean(parent) || family?.kind === FamilyMemberKind.KID;
+  }
+
+  private async assertMarketplacePrivate(input: {
+    studioId: string;
+    trainerId?: string;
+    branchId?: string;
+    batchId?: string;
+    startsAt?: string;
+    endsAt?: string;
+  }) {
+    if (!input.trainerId) {
+      throw new BadRequestException("Private bookings require a trainer");
+    }
+    if (!input.startsAt || !input.endsAt) {
+      throw new BadRequestException("Private bookings require a time");
+    }
+    const attach = await this.prisma.trainerStudio.findUnique({
+      where: {
+        trainerId_studioId: {
+          trainerId: input.trainerId,
+          studioId: input.studioId,
+        },
+      },
+      select: { trainerId: true },
+    });
+    if (!attach) {
+      throw new BadRequestException(
+        "This trainer is not attached to this studio",
+      );
+    }
+    let branchId = input.branchId;
+    if (!branchId && input.batchId) {
+      const batch = await this.prisma.batch.findUnique({
+        where: { id: input.batchId },
+        select: { branchId: true, studioId: true },
+      });
+      if (batch?.studioId === input.studioId) {
+        branchId = batch.branchId;
+      }
+    }
+    if (!branchId) {
+      throw new BadRequestException("Private bookings require a floor");
+    }
+    await this.assertBranchOpen(input.studioId, branchId, input.startsAt, input.endsAt);
+    return {
+      trainerId: input.trainerId,
+      branchId,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt,
+    };
+  }
+
+  private async assertMarketplaceFloorHire(input: {
+    studioId: string;
+    branchId?: string;
+    startsAt?: string;
+    endsAt?: string;
+  }) {
+    if (!input.branchId) {
+      throw new BadRequestException("Floor hire requires a floor");
+    }
+    if (!input.startsAt || !input.endsAt) {
+      throw new BadRequestException("Floor hire requires a time");
+    }
+    await this.assertBranchOpen(
+      input.studioId,
+      input.branchId,
+      input.startsAt,
+      input.endsAt,
+    );
+    return {
+      branchId: input.branchId,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt,
+    };
+  }
+
+  private async assertBranchOpen(
+    studioId: string,
+    branchId: string,
+    startsAt: string,
+    endsAt: string,
+  ) {
+    const branch = await this.prisma.studioBranch.findUnique({
+      where: { id: branchId },
+      select: { studioId: true, openingHours: true },
+    });
+    if (!branch || branch.studioId !== studioId) {
+      throw new BadRequestException("Pick a floor at this studio");
+    }
+    if (
+      !branchIsOpenAt(
+        branch.openingHours,
+        new Date(startsAt),
+        new Date(endsAt),
+      )
+    ) {
+      throw new BadRequestException("The studio is closed at that time");
+    }
+  }
+
+  private async resolveMarketplacePricePaise(input: {
+    type: BookingType | string;
+    studioId: string;
+    trainerId?: string | null;
+    settings?: {
+      privateSessionPaise?: number | null;
+      floorHirePaise?: number | null;
+    } | null;
+  }) {
+    if (input.type === BookingType.PRIVATE || input.type === "PRIVATE") {
+      if (input.trainerId) {
+        const link = await this.prisma.trainerStudio.findUnique({
+          where: {
+            trainerId_studioId: {
+              trainerId: input.trainerId,
+              studioId: input.studioId,
+            },
+          },
+          select: { privateSessionPaise: true },
+        });
+        if (link?.privateSessionPaise != null) {
+          return link.privateSessionPaise;
+        }
+      }
+      return input.settings?.privateSessionPaise ?? null;
+    }
+    if (input.type === BookingType.FLOOR_HIRE || input.type === "FLOOR_HIRE") {
+      return input.settings?.floorHirePaise ?? null;
+    }
+    return null;
+  }
+
+  private async refundMarketplaceBookingIfNeeded(
+    booking: {
+      type: BookingType;
+      status: BookingStatus;
+      startsAt: Date | null;
+      razorpayPaymentId: string | null;
+      studio?: { settings?: Parameters<RazorpayService["isEnabled"]>[0] };
+    },
+    input: { studioInitiated: boolean },
+  ) {
+    const paidTypes =
+      booking.type === BookingType.PRIVATE ||
+      booking.type === BookingType.FLOOR_HIRE;
+    if (!paidTypes || !booking.razorpayPaymentId) return;
+    if (booking.status === BookingStatus.AWAITING_PAYMENT) return;
+    const startsAt = booking.startsAt ?? new Date();
+    if (
+      !input.studioInitiated &&
+      !canRefundPaidMarketplaceBooking(startsAt)
+    ) {
+      return;
+    }
+    const settings = booking.studio?.settings;
+    if (!this.razorpay.isEnabled(settings)) return;
+    try {
+      await this.razorpay.createRefund(
+        {
+          paymentId: booking.razorpayPaymentId,
+          amountPaise: this.razorpay.bookingAmountPaise(),
+        },
+        settings,
+      );
+    } catch {
+      // Refund is best-effort; the booking still cancels.
+    }
+  }
+}

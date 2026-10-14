@@ -1,0 +1,390 @@
+export type CoveredSeat = {
+  studentId: string;
+  seatRole: "ADULT" | "KID";
+  batchId?: string | undefined;
+};
+
+export type CombineSource = {
+  invoiceId: string;
+  studentId: string;
+  batchId: string | null;
+  originalAmount: number;
+  allocatedDiscount: number;
+  netAmount: number;
+};
+
+export type BillingCadence = "MONTHLY" | "QUARTERLY";
+
+export type PaymentPlanOption = {
+  cadence: BillingCadence;
+  subscriptionId: string;
+  price: number;
+  label: string;
+};
+
+export type InvoicePaymentPlan = {
+  currentCadence: BillingCadence;
+  options: PaymentPlanOption[];
+};
+
+export type Invoice = {
+  id: string;
+  studentId: string;
+  amount: number;
+  referralDiscount?: number | undefined;
+  studioDiscount?: number | undefined;
+  familyDiscount?: number | undefined;
+  refundedAmount?: number | undefined;
+  gstPercent?: number | undefined;
+  status: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED";
+  paymentMethod?: "CASH" | "UPI_MANUAL" | "RAZORPAY" | null | undefined;
+  paidAt?: string | null | undefined;
+  refundedAt?: string | null | undefined;
+  paymentHoldExpiresAt?: string | null | undefined;
+  periodStart: string;
+  periodEnd: string;
+  billMonthKeys: string[];
+  billPeriodLabel: string;
+  kind: "FAMILY" | "INDIVIDUAL" | "COMBINED";
+  batchId?: string | null | undefined;
+  batchName?: string | null | undefined;
+  student?: { name: string } | undefined;
+  membership?:
+    | {
+        periodStart?: string | null | undefined;
+        periodEnd?: string | null | undefined;
+        subscription?: {
+          name?: string | undefined;
+          billingCadence?: BillingCadence | undefined;
+          kind?: string | undefined;
+        } | null;
+      }
+    | null
+    | undefined;
+  chargeType?:
+    | "POSTPAID_PRORATED"
+    | "PREPAID_PRORATED"
+    | "PREPAID_FULL"
+    | "ADMISSION"
+    | undefined;
+  attendedSessionCount?: number | null | undefined;
+  billedSessionCount?: number | null | undefined;
+  canConvertToQuarterly?: boolean | undefined;
+  paymentPlan?: InvoicePaymentPlan | null | undefined;
+  dueDate?: string | null | undefined;
+  familySummary?:
+    | {
+        planName: string | null;
+        adultCount: number | null;
+        kidCount: number | null;
+        coveredStudents: CoveredSeat[] | null;
+      }
+    | null
+    | undefined;
+  purchaseMeta?:
+    | {
+        subscriptionId: string;
+        purchaserUserId: string;
+        coveredStudents: CoveredSeat[];
+      }
+    | null
+    | undefined;
+  combineMeta?:
+    | {
+        sources: CombineSource[];
+      }
+    | null
+    | undefined;
+};
+
+export type StudioFamily = {
+  ownerId: string;
+  ownerName: string;
+  ownerRole: "OWNER" | "STAFF" | "TRAINER" | "STUDENT" | "PARENT";
+  ownerPhotoUrl: string | null;
+  members: Array<{
+    id: string;
+    name: string;
+    photoUrl: string | null;
+    seatRole: "ADULT" | "KID";
+  }>;
+};
+
+export type ManualPaymentMethod = "CASH" | "UPI_MANUAL";
+
+const inrPriceFormat = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+export function formatPrice(amount: number | string) {
+  return inrPriceFormat.format(Number(amount));
+}
+
+/** Currency mark and digits as separate strings so the ₹ can be weighted independently. */
+export function formatPriceParts(amount: number | string): {
+  currency: string;
+  value: string;
+} {
+  const parts = inrPriceFormat.formatToParts(Number(amount));
+  let currency = "";
+  let value = "";
+  for (const part of parts) {
+    if (part.type === "currency") {
+      currency += part.value;
+      continue;
+    }
+    if (
+      currency &&
+      !value &&
+      part.type === "literal" &&
+      part.value.trim() === ""
+    ) {
+      continue;
+    }
+    value += part.value;
+  }
+  return { currency, value };
+}
+
+export function computeGst(amount: number, gstPercent: number): number {
+  return Math.round(amount * (gstPercent / 100) * 100) / 100;
+}
+
+/** Savings when paying quarterly vs 3× monthly; 0 when not applicable. */
+export function quarterlyPlanSavings(
+  plan: InvoicePaymentPlan | null | undefined,
+): number {
+  if (!plan) return 0;
+  const monthly = plan.options.find((o) => o.cadence === "MONTHLY");
+  const quarterly = plan.options.find((o) => o.cadence === "QUARTERLY");
+  if (!monthly || !quarterly) return 0;
+  const savings = Math.round((monthly.price * 3 - quarterly.price) * 100) / 100;
+  return savings > 0 ? savings : 0;
+}
+
+export function paymentPlanPrice(
+  plan: InvoicePaymentPlan | null | undefined,
+  cadence: BillingCadence,
+  fallbackAmount: number,
+): number {
+  const option = plan?.options.find((o) => o.cadence === cadence);
+  return option?.price ?? fallbackAmount;
+}
+
+export function cadenceDisplayLabel(cadence: BillingCadence): string {
+  return cadence === "QUARTERLY" ? "Quarterly" : "Monthly";
+}
+
+export function cadencePriceHint(
+  plan: InvoicePaymentPlan,
+  cadence: BillingCadence,
+): string {
+  const option = plan.options.find((o) => o.cadence === cadence);
+  if (!option) return "";
+  if (cadence === "QUARTERLY") {
+    const savings = quarterlyPlanSavings(plan);
+    const base = `${formatPrice(option.price)} / 3 months`;
+    return savings > 0 ? `${base} · Save ${formatPrice(savings)}` : base;
+  }
+  return `${formatPrice(option.price)} / month`;
+}
+
+export type InvoiceMonthSource = Pick<Invoice, "status"> &
+  Partial<
+    Pick<
+      Invoice,
+      "periodStart" | "periodEnd" | "billMonthKeys" | "billPeriodLabel"
+    >
+  >;
+
+export type InvoiceTilePeriodSource = InvoiceMonthSource &
+  Pick<Invoice, "chargeType">;
+
+export function utcMonthKey(date: Date = new Date()): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export function recentUtcMonthKeys(count = 12, now = new Date()): string[] {
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(Date.UTC(year, month - index, 1));
+    return utcMonthKey(date);
+  });
+}
+
+export function formatInvoiceMonthLabel(key: string): string {
+  const [year, month] = key.split("-").map(Number);
+  if (!year || !month) return key;
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function dateFromMonthKey(key: string): Date | null {
+  const [year, month] = key.split("-").map(Number);
+  if (!year || !month) return null;
+  return new Date(Date.UTC(year, month - 1, 1));
+}
+
+/** Inclusive UTC bounds for a `YYYY-MM` key. */
+export function utcMonthBounds(key: string): { from: Date; to: Date } | null {
+  const from = dateFromMonthKey(key);
+  if (!from) return null;
+  const to = new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 0, 23, 59, 59, 999),
+  );
+  return { from, to };
+}
+
+function invoicePeriodStart(invoice: InvoiceMonthSource): Date | null {
+  if (!invoice.periodStart) return null;
+  const date = new Date(invoice.periodStart);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function monthSpanUtc(start: Date, end: Date): number {
+  return (
+    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+    (end.getUTCMonth() - start.getUTCMonth()) +
+    1
+  );
+}
+
+/** Calendar months this invoice covers. Prefers the API billMonthKeys. */
+export function invoiceCoveredMonthKeys(invoice: InvoiceMonthSource): string[] {
+  if (invoice.billMonthKeys && invoice.billMonthKeys.length > 0) {
+    return invoice.billMonthKeys;
+  }
+  const start = invoicePeriodStart(invoice);
+  if (!start) return [];
+
+  let count = 1;
+  if (invoice.periodEnd) {
+    const end = new Date(invoice.periodEnd);
+    if (!Number.isNaN(end.getTime())) {
+      count = Math.min(12, Math.max(1, monthSpanUtc(start, end)));
+    }
+  }
+
+  return Array.from({ length: count }, (_, offset) =>
+    utcMonthKey(
+      new Date(
+        Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + offset, 1),
+      ),
+    ),
+  );
+}
+
+export function formatInvoicePeriodLabel(
+  keys: string[],
+  month: "short" | "long" = "short",
+): string {
+  const dates = keys
+    .map((key) => {
+      const date = dateFromMonthKey(key);
+      if (!date) return null;
+      return { year: date.getUTCFullYear(), date };
+    })
+    .filter((item): item is { year: number; date: Date } => item != null);
+  if (dates.length === 0) return "";
+
+  const formatMonthYear = (date: Date) =>
+    new Intl.DateTimeFormat("en-IN", {
+      month,
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+
+  if (dates.length === 1) {
+    return formatMonthYear(dates[0]!.date);
+  }
+
+  const formatMonth = (date: Date) =>
+    new Intl.DateTimeFormat("en-IN", { month, timeZone: "UTC" }).format(date);
+
+  const sameYear = dates.every((item) => item.year === dates[0]!.year);
+  if (sameYear) {
+    return `${dates.map((item) => formatMonth(item.date)).join(", ")} ${dates[0]!.year}`;
+  }
+  return dates.map((item) => formatMonthYear(item.date)).join(", ");
+}
+
+export function invoicePeriodLabel(
+  invoice: InvoiceMonthSource,
+  month: "short" | "long" = "short",
+): string | null {
+  const keys = invoiceCoveredMonthKeys(invoice);
+  if (keys.length === 0) return null;
+  return formatInvoicePeriodLabel(keys, month);
+}
+
+/** Tile heading: stored billing months from the API. */
+export function invoiceTilePeriodLabel(
+  invoice: InvoiceTilePeriodSource,
+  month: "short" | "long" = "short",
+): string | null {
+  if (invoice.billPeriodLabel) return invoice.billPeriodLabel;
+  if (invoice.chargeType === "ADMISSION") return "Admission fee";
+  return invoicePeriodLabel(invoice, month);
+}
+
+/** Receipt print fields from the stored invoice period, never paidAt. */
+export function invoicePrintPeriod(invoice: InvoiceMonthSource): {
+  billMonth: string | null;
+  billMonthKeys: string[];
+  billPeriodLabel: string | null;
+} {
+  const keys = invoiceCoveredMonthKeys(invoice);
+  return {
+    billMonth: invoice.periodStart ?? null,
+    billMonthKeys: keys,
+    billPeriodLabel:
+      keys.length > 0
+        ? formatInvoicePeriodLabel(keys, "long")
+        : invoice.billPeriodLabel?.trim() || null,
+  };
+}
+
+export function invoiceMonthKey(invoice: InvoiceMonthSource): string | null {
+  return invoiceCoveredMonthKeys(invoice)[0] ?? null;
+}
+
+export function invoiceMatchesMonth(
+  invoice: InvoiceMonthSource,
+  monthKey: string,
+): boolean {
+  if (monthKey === "ALL") return true;
+  return invoiceCoveredMonthKeys(invoice).includes(monthKey);
+}
+
+export function allocateFamilyDiscount(
+  amounts: number[],
+  familyDiscount: number,
+): number[] {
+  const subtotal =
+    Math.round(amounts.reduce((sum, n) => sum + n, 0) * 100) / 100;
+  if (amounts.length === 0) return [];
+  if (familyDiscount < 0 || familyDiscount > subtotal) {
+    throw new Error("Invalid family discount");
+  }
+  if (subtotal === 0) return amounts.map(() => 0);
+  const allocated: number[] = [];
+  let remaining = familyDiscount;
+  for (let i = 0; i < amounts.length; i += 1) {
+    if (i === amounts.length - 1) {
+      allocated.push(Math.round(remaining * 100) / 100);
+      break;
+    }
+    const share =
+      Math.round(((familyDiscount * amounts[i]!) / subtotal) * 100) / 100;
+    allocated.push(share);
+    remaining = Math.round((remaining - share) * 100) / 100;
+  }
+  return allocated;
+}

@@ -1,0 +1,39 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--color-card, var(--color-bg));
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%));
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform var(--motion-fast, 150ms) ease,
+    box-shadow var(--motion-normal, 200ms) ease;
+}
+
+.card:active {
+  transform: scale(var(--interaction-press-scale, 0.98));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    box-shadow: var(--elevation-2, 0 4px 12px rgb(0 0 0 / 8%));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition-duration: 0ms;
+  }
+
+  .card:active {
+    transform: none;
+  }
+}

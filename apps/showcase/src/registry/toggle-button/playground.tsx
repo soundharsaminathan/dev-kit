@@ -2,7 +2,7 @@ import { ToggleButton } from "@dev-ui/components/toggle-button";
 
 type ToggleButtonPlaygroundProps = {
   children?: string;
-  variant?: "default" | "primary" | "quiet";
+  variant?: "default" | "primary" | "quiet" | "segmented";
   size?: "xs" | "sm" | "md" | "lg";
   defaultSelected?: boolean;
   isDisabled?: boolean;

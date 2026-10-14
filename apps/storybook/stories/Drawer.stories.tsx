@@ -5,6 +5,7 @@ import { useState } from "react";
 
 type DrawerStoryArgs = {
   placement: "top" | "bottom" | "left" | "right";
+  sizing: "static" | "dynamic";
   title: string;
   body: string;
 };
@@ -17,27 +18,41 @@ const meta = {
       control: "select",
       options: ["top", "bottom", "left", "right"],
     },
+    sizing: {
+      control: "select",
+      options: ["static", "dynamic"],
+    },
     title: { control: "text" },
     body: { control: "text" },
   },
   args: {
     placement: "bottom",
+    sizing: "static",
     title: "Drawer title",
     body: "Swipe down or click outside to dismiss.",
   },
-  render: function DrawerDemo({ placement, title, body }) {
+  render: function DrawerDemo({ placement, sizing, title, body }) {
     const [open, setOpen] = useState(false);
 
     return (
       <>
         <Button onClick={() => setOpen(true)}>Open drawer</Button>
-        <Drawer isOpen={open} onOpenChange={setOpen} placement={placement}>
+        <Drawer
+          isOpen={open}
+          onOpenChange={setOpen}
+          placement={placement}
+          sizing={sizing}
+        >
           <DrawerHandle />
           <div
             style={{
               padding: 24,
               width:
-                placement === "left" || placement === "right" ? 280 : undefined,
+                placement === "left" || placement === "right"
+                  ? sizing === "dynamic"
+                    ? 280
+                    : "100%"
+                  : undefined,
             }}
           >
             <h2 style={{ marginTop: 0 }}>{title}</h2>
@@ -60,5 +75,14 @@ export const LeftPlacement: Story = {
     placement: "left",
     title: "Left drawer",
     body: "Left drawer panel",
+  },
+};
+
+export const DynamicSizing: Story = {
+  args: {
+    placement: "right",
+    sizing: "dynamic",
+    title: "Dynamic drawer",
+    body: "Side drawer width follows the content.",
   },
 };

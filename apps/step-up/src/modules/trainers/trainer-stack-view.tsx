@@ -1,0 +1,374 @@
+import { Icon } from "@dev-ui/icons";
+import { useNavigate } from "@tanstack/react-router";
+import {
+  type MotionValue,
+  motion,
+  type PanInfo,
+  useMotionTemplate,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "motion/react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { ENTITY_ICONS } from "@/lib/entity-icons";
+import { FollowButton } from "@/modules/social/follow-button";
+import { StyleList } from "@/modules/styles/style-list";
+import { EmptyState } from "@/modules/ui/states";
+import { FollowCounts } from "./follow-counts";
+import styles from "./trainers.module.scss";
+import type { StudioTrainer } from "./types";
+
+function stopStackDrag(event: ReactPointerEvent) {
+  event.stopPropagation();
+}
+
+type TrainerStackViewProps = {
+  trainers: StudioTrainer[];
+  isFollowPending?: ((trainerId: string) => boolean) | undefined;
+  onToggleFollow?: ((trainer: StudioTrainer) => void) | undefined;
+  selectionMode?: boolean;
+  selectedId?: string | null;
+  onSelect?: ((trainerId: string) => void) | undefined;
+  compact?: boolean;
+};
+
+const DRAG_BUFFER = 60;
+const VELOCITY_THRESHOLD = 500;
+const SPRING = { type: "spring" as const, stiffness: 300, damping: 40 };
+
+type StackCardProps = {
+  trainer: StudioTrainer;
+  index: number;
+  x: MotionValue<number>;
+  cardWidth: number;
+  gap: number;
+  reducedMotion: boolean;
+  followPending?: boolean | undefined;
+  selected?: boolean;
+  selectionMode?: boolean;
+  compact?: boolean;
+  onOpen: () => void;
+  onNext?: (() => void) | undefined;
+  onSelect?: (() => void) | undefined;
+  onToggleFollow?: (() => void) | undefined;
+};
+
+function StackCard({
+  trainer,
+  index,
+  x,
+  cardWidth,
+  gap,
+  reducedMotion,
+  followPending,
+  selected,
+  selectionMode,
+  compact,
+  onOpen,
+  onNext,
+  onSelect,
+  onToggleFollow,
+}: StackCardProps) {
+  const center = -(index * (cardWidth + gap));
+  const distance = useTransform(x, (value) => value - center);
+
+  const rotate = useTransform(
+    distance,
+    [-cardWidth, -cardWidth * 0.1, 0, cardWidth * 0.1, cardWidth],
+    reducedMotion ? [0, 0, 0, 0, 0] : [10, 10, 0, -10, -10],
+  );
+
+  const blur = useTransform(
+    distance,
+    [-cardWidth, -cardWidth * 0.2, 0, cardWidth * 0.2, cardWidth],
+    reducedMotion ? [0, 0, 0, 0, 0] : [4, 2, 0, 2, 4],
+  );
+
+  const opacity = useTransform(
+    distance,
+    [-cardWidth, -cardWidth * 0.2, 0, cardWidth * 0.2, cardWidth],
+    [0, 0.8, 1, 0.8, 0],
+  );
+
+  const filter = useMotionTemplate`blur(${blur}px)`;
+  const imageUrl = trainer.bannerUrl ?? trainer.photoUrl;
+
+  return (
+    <motion.article
+      style={{
+        opacity,
+        rotate,
+        filter: reducedMotion ? undefined : filter,
+        minWidth: cardWidth,
+      }}
+      className={styles.stackCard}
+      data-compact={compact ? "true" : undefined}
+      data-selected={selected ? "true" : undefined}
+    >
+      <div
+        className={styles.stackCardPhoto}
+        style={imageUrl ? { backgroundImage: `url("${imageUrl}")` } : undefined}
+        data-fallback={imageUrl ? undefined : "true"}
+      >
+        {imageUrl ? null : (
+          <span className={styles.stackPhotoFallback} aria-hidden>
+            {trainer.name.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        <div className={styles.stackPhotoScrim} aria-hidden />
+      </div>
+
+      <div className={styles.stackCardContent}>
+        <div className={styles.stackInfo}>
+          <h2 className={styles.stackName}>{trainer.name}</h2>
+          {!selectionMode ? (
+            <div className={styles.stackFollowCounts}>
+              <FollowCounts
+                followerCount={trainer.followerCount}
+                followingCount={trainer.followingCount}
+                compact
+              />
+            </div>
+          ) : null}
+          {trainer.styles.length > 0 ? (
+            <StyleList
+              styles={trainer.styles}
+              size="xs"
+              className={styles.stackStyleList}
+            />
+          ) : (
+            <p className={styles.stackEmpty}>No styles listed yet</p>
+          )}
+        </div>
+
+        {selectionMode && onSelect ? (
+          <div className={styles.stackActions} onPointerDown={stopStackDrag}>
+            <button
+              type="button"
+              className={styles.stackSelectBtn}
+              data-selected={selected ? "true" : undefined}
+              onClick={onSelect}
+            >
+              {selected ? "Selected" : "Select"}
+            </button>
+          </div>
+        ) : null}
+
+        {!selectionMode ? (
+          <div className={styles.stackActions} onPointerDown={stopStackDrag}>
+            {onToggleFollow && !trainer.isOwnProfile ? (
+              <FollowButton
+                isFollowing={trainer.isFollowing}
+                followRequestStatus={trainer.followRequestStatus}
+                isPending={followPending}
+                onFollow={onToggleFollow}
+                onUnfollow={onToggleFollow}
+              />
+            ) : null}
+            <div className={styles.stackQuickActions}>
+              {onNext ? (
+                <button
+                  type="button"
+                  className={styles.stackQuickBtn}
+                  aria-label="Skip to next trainer"
+                  onClick={onNext}
+                >
+                  <Icon name="x" aria-hidden />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={styles.stackOpenBtn}
+                aria-label={`Open ${trainer.name}'s profile`}
+                onClick={onOpen}
+              >
+                <Icon name="arrow-up-right" aria-hidden />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </motion.article>
+  );
+}
+
+export function TrainerStackView({
+  trainers,
+  isFollowPending,
+  onToggleFollow,
+  selectionMode = false,
+  selectedId = null,
+  onSelect,
+  compact = false,
+}: TrainerStackViewProps) {
+  const navigate = useNavigate();
+  const reducedMotion = useReducedMotion() ?? false;
+  const [index, setIndex] = useState(0);
+  const [dimensions, setDimensions] = useState({ cardWidth: 320, gap: 200 });
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      const width = window.innerWidth;
+      if (width < 640) {
+        setDimensions({
+          cardWidth: Math.min(width - 24, compact ? 280 : 300),
+          gap: 40,
+        });
+      } else {
+        setDimensions({
+          cardWidth: compact ? 280 : 320,
+          gap: compact ? 48 : 200,
+        });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, [compact]);
+
+  useEffect(() => {
+    setIndex((current) => Math.min(current, Math.max(trainers.length - 1, 0)));
+  }, [trainers]);
+
+  const selectionIndexRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!selectionMode || !onSelect) return;
+    // Sync selection when the user swipes — not on mount / trainers load,
+    // so Continue without a gesture does not silently book the first trainer.
+    if (selectionIndexRef.current === null) {
+      selectionIndexRef.current = index;
+      return;
+    }
+    if (selectionIndexRef.current === index) return;
+    selectionIndexRef.current = index;
+    const trainer = trainers[index];
+    if (trainer) onSelect(trainer.id);
+  }, [index, onSelect, selectionMode, trainers]);
+
+  const { cardWidth, gap } = dimensions;
+  const x = useMotionValue(-(index * (cardWidth + gap)));
+
+  function handleDragEnd(_: unknown, info: PanInfo) {
+    const offset = info.offset.x;
+    const velocity = info.velocity.x;
+
+    if (offset < -DRAG_BUFFER || velocity < -VELOCITY_THRESHOLD) {
+      setIndex((prev) => Math.min(prev + 1, trainers.length - 1));
+      return;
+    }
+
+    if (offset > DRAG_BUFFER || velocity > VELOCITY_THRESHOLD) {
+      setIndex((prev) => Math.max(prev - 1, 0));
+    }
+  }
+
+  function goTo(next: number) {
+    setIndex(Math.max(0, Math.min(next, trainers.length - 1)));
+  }
+
+  function openTrainer(trainerId: string) {
+    void navigate({ to: "/users/$id", params: { id: trainerId } });
+  }
+
+  if (trainers.length === 0) {
+    return (
+      <EmptyState
+        icon={ENTITY_ICONS.trainer}
+        title="No trainers yet"
+        description="Trainer profiles will show up here once your studio adds them."
+      />
+    );
+  }
+
+  return (
+    <div
+      className={styles.stackRoot}
+      data-compact={compact ? "true" : undefined}
+    >
+      <div className={styles.stackViewport} style={{ width: cardWidth + 40 }}>
+        <motion.div
+          className={styles.stackTrack}
+          drag="x"
+          dragConstraints={{
+            left: -(trainers.length - 1) * (cardWidth + gap),
+            right: 0,
+          }}
+          style={{
+            x,
+            gap: `${gap}px`,
+            ...(reducedMotion ? {} : { perspective: 1000 }),
+          }}
+          animate={{
+            x: -(index * (cardWidth + gap)),
+          }}
+          transition={reducedMotion ? { duration: 0.2 } : SPRING}
+          onDragEnd={handleDragEnd}
+        >
+          {trainers.map((trainer, trainerIndex) => (
+            <StackCard
+              key={trainer.id}
+              trainer={trainer}
+              index={trainerIndex}
+              x={x}
+              cardWidth={cardWidth}
+              gap={gap}
+              reducedMotion={reducedMotion}
+              followPending={isFollowPending?.(trainer.id)}
+              selected={selectedId === trainer.id}
+              selectionMode={selectionMode}
+              compact={compact}
+              onOpen={() => openTrainer(trainer.id)}
+              onNext={selectionMode ? undefined : () => goTo(trainerIndex + 1)}
+              onSelect={
+                onSelect
+                  ? () => {
+                      setIndex(trainerIndex);
+                      onSelect(trainer.id);
+                    }
+                  : undefined
+              }
+              onToggleFollow={
+                onToggleFollow ? () => onToggleFollow(trainer) : undefined
+              }
+            />
+          ))}
+        </motion.div>
+      </div>
+
+      {trainers.length > 1 ? (
+        <div
+          className={styles.stackProgress}
+          role="tablist"
+          aria-label="Trainers"
+        >
+          {trainers.map((trainer, dotIndex) => (
+            <button
+              key={trainer.id}
+              type="button"
+              role="tab"
+              aria-selected={dotIndex === index}
+              aria-label={`Show ${trainer.name}`}
+              className={[
+                styles.stackProgressSeg,
+                dotIndex === index ? styles.stackProgressSegActive : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => setIndex(dotIndex)}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      <p className={styles.stackCounter}>
+        {index + 1} of {trainers.length}
+      </p>
+    </div>
+  );
+}

@@ -1,0 +1,4 @@
+-- AlterEnum
+ALTER TYPE "NotificationType" ADD VALUE 'SESSION_ADDED';
+ALTER TYPE "NotificationType" ADD VALUE 'SESSION_CHANGED';
+ALTER TYPE "NotificationType" ADD VALUE 'SESSION_CANCELLED';

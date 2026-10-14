@@ -49,6 +49,7 @@ function ToggleButtonGroup({
         {...groupProps}
         ref={composeRefs(groupRef, ref)}
         data-toggle-button-group=""
+        data-variant={variant}
         data-orientation={orientation}
         className={cn(styles.root, className)}
       >

@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 type ToggleButtonGroupStoryArgs = {
   selectionMode: "single" | "multiple";
   defaultSelectedKeys: string[];
-  variant: "default" | "primary" | "quiet";
+  variant: "default" | "primary" | "quiet" | "segmented";
   size: "xs" | "sm" | "md" | "lg";
   orientation: "horizontal" | "vertical";
   isDisabled: boolean;
@@ -23,7 +23,7 @@ const meta = {
     defaultSelectedKeys: { control: "object" },
     variant: {
       control: "select",
-      options: ["default", "primary", "quiet"],
+      options: ["default", "primary", "quiet", "segmented"],
     },
     size: {
       control: "select",
@@ -57,19 +57,15 @@ const meta = {
     <ToggleButtonGroup
       selectionMode={selectionMode}
       defaultSelectedKeys={defaultSelectedKeys}
+      variant={variant}
+      size={size}
       orientation={orientation}
       isDisabled={isDisabled}
       disallowEmptySelection={disallowEmptySelection}
     >
-      <ToggleButton id="bold" variant={variant} size={size}>
-        Bold
-      </ToggleButton>
-      <ToggleButton id="italic" variant={variant} size={size}>
-        Italic
-      </ToggleButton>
-      <ToggleButton id="underline" variant={variant} size={size}>
-        Underline
-      </ToggleButton>
+      <ToggleButton id="bold">Bold</ToggleButton>
+      <ToggleButton id="italic">Italic</ToggleButton>
+      <ToggleButton id="underline">Underline</ToggleButton>
     </ToggleButtonGroup>
   ),
 } satisfies Meta<ToggleButtonGroupStoryArgs>;
@@ -78,3 +74,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const Segmented: Story = {
+  args: {
+    variant: "segmented",
+    defaultSelectedKeys: ["bold"],
+  },
+};

@@ -13,6 +13,12 @@ import pkg from "./package.json" with { type: "json" };
 const dirname = fileURLToPath(new URL(".", import.meta.url));
 const srcDir = resolve(dirname, "src");
 const externals = externalizePackageDeps(pkg);
+const entries = Object.fromEntries(
+  Object.entries(globEntryMap({ srcDir })).map(([name, file]) => [
+    name.replace(/\/index$/, ""),
+    file,
+  ]),
+);
 
 export default defineConfig({
   plugins: [react(), createDtsPlugin({ entryRoot: "src" })],
@@ -22,9 +28,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     lib: {
-      entry: globEntryMap({
-        srcDir,
-      }),
+      entry: entries,
       formats: ["es"],
     },
     rollupOptions: {

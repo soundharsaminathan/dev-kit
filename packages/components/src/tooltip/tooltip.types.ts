@@ -22,6 +22,13 @@ export type TooltipContentProps = AriaTooltipProps & {
   children?: ReactNode;
   className?: string | undefined;
   placement?: Placement | undefined;
+  /** Render in a portal with fixed positioning (escapes overflow clipping). */
+  portal?: boolean | undefined;
+  /**
+   * Whether to hide the tooltip arrow.
+   * @default false
+   */
+  hideArrow?: boolean | undefined;
   ref?: Ref<HTMLDivElement>;
 };
 

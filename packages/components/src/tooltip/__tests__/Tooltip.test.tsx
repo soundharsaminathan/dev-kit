@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { setInteractionModality } from "@react-aria/interactions";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Button } from "../../button/Button";
 import { Tooltip, TooltipContent } from "../Tooltip";
@@ -138,6 +138,60 @@ describe("Tooltip", () => {
     );
   });
 
+  it("renders an arrow by default", () => {
+    render(
+      <Tooltip delay={0}>
+        <button type="button">Save</button>
+        <TooltipContent>Save file</TooltipContent>
+      </Tooltip>,
+    );
+
+    fireEvent.pointerEnter(screen.getByRole("button", { name: "Save" }), {
+      pointerType: "mouse",
+    });
+    vi.runAllTimers();
+
+    expect(
+      screen.getByRole("tooltip").querySelector("[data-overlay-arrow='']"),
+    ).toBeInTheDocument();
+  });
+
+  it("points the arrow toward the trigger", () => {
+    render(
+      <Tooltip delay={0}>
+        <button type="button">Save</button>
+        <TooltipContent placement="top">Save file</TooltipContent>
+      </Tooltip>,
+    );
+
+    fireEvent.pointerEnter(screen.getByRole("button", { name: "Save" }), {
+      pointerType: "mouse",
+    });
+    vi.runAllTimers();
+
+    expect(
+      screen.getByRole("tooltip").querySelector("[data-overlay-arrow='']"),
+    ).toHaveAttribute("data-placement", "top");
+  });
+
+  it("hides the arrow when hideArrow is set", () => {
+    render(
+      <Tooltip delay={0}>
+        <button type="button">Save</button>
+        <TooltipContent hideArrow>Save file</TooltipContent>
+      </Tooltip>,
+    );
+
+    fireEvent.pointerEnter(screen.getByRole("button", { name: "Save" }), {
+      pointerType: "mouse",
+    });
+    vi.runAllTimers();
+
+    expect(
+      screen.getByRole("tooltip").querySelector("[data-overlay-arrow='']"),
+    ).not.toBeInTheDocument();
+  });
+
   it("throws when TooltipContent is rendered outside Tooltip", () => {
     const consoleError = vi
       .spyOn(console, "error")
@@ -214,5 +268,125 @@ describe("Tooltip", () => {
     fireEvent.keyDown(trigger, { key: "Enter" });
     vi.runAllTimers();
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("clamps portal tooltips inside the viewport near the right edge", () => {
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 320,
+    });
+
+    render(
+      <div style={{ position: "fixed", right: 0, top: 40 }}>
+        <Tooltip delay={0}>
+          <button type="button">Bell</button>
+          <TooltipContent portal placement="bottom">
+            Notifications
+          </TooltipContent>
+        </Tooltip>
+      </div>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Bell" });
+    trigger.getBoundingClientRect = () =>
+      ({
+        x: 280,
+        y: 40,
+        top: 40,
+        left: 280,
+        bottom: 72,
+        right: 312,
+        width: 32,
+        height: 32,
+        toJSON() {
+          return {};
+        },
+      }) as DOMRect;
+
+    fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+    vi.runAllTimers();
+
+    const tooltip = screen.getByRole("tooltip");
+    Object.defineProperty(tooltip, "offsetWidth", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(tooltip, "offsetHeight", {
+      configurable: true,
+      value: 32,
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    expect(Number.parseFloat(tooltip.style.left)).toBeLessThanOrEqual(
+      320 - 8 - 120,
+    );
+    expect(Number.parseFloat(tooltip.style.left)).toBeGreaterThanOrEqual(8);
+
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: originalInnerWidth,
+    });
+  });
+
+  it("hides when the trigger scrolls out of view", () => {
+    let observerCallback: IntersectionObserverCallback | undefined;
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+
+    class MockIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallback = callback;
+      }
+      observe = observe;
+      disconnect = disconnect;
+      unobserve = vi.fn();
+      takeRecords = vi.fn(() => []);
+      root = null;
+      rootMargin = "";
+      thresholds = [0];
+    }
+
+    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+
+    try {
+      render(
+        <Tooltip delay={0}>
+          <button type="button">Save</button>
+          <TooltipContent portal>Save file</TooltipContent>
+        </Tooltip>,
+      );
+
+      fireEvent.pointerEnter(screen.getByRole("button", { name: "Save" }), {
+        pointerType: "mouse",
+      });
+      vi.runAllTimers();
+
+      expect(screen.getByRole("tooltip")).toHaveTextContent("Save file");
+      expect(observe).toHaveBeenCalled();
+
+      act(() => {
+        observerCallback?.(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        );
+      });
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+      act(() => {
+        observerCallback?.(
+          [{ isIntersecting: false } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        );
+      });
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

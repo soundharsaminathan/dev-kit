@@ -1,0 +1,1817 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SYSTEM_ADMIN
+  OWNER
+  STAFF
+  TRAINER
+  STUDENT
+  PARENT
+}
+
+enum StudioStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum BatchCategory {
+  KIDS
+  ADULTS
+}
+
+enum EnrollmentMode {
+  STAFF_ONLY
+  SELF_JOIN
+}
+
+enum BatchEnrollmentStatus {
+  ACTIVE
+  ENDED
+}
+
+enum SubscriptionKind {
+  INDIVIDUAL
+  FAMILY
+}
+
+enum IndividualAudience {
+  ADULT
+  KID
+}
+
+enum FamilyPack {
+  TWO_KIDS
+  ONE_ADULT_ONE_KID
+  TWO_ADULTS
+  ONE_ADULT_TWO_KIDS
+  TWO_ADULTS_ONE_KID
+  TWO_ADULTS_TWO_KIDS
+}
+
+enum BillingCadence {
+  MONTHLY
+  QUARTERLY
+}
+
+enum MembershipStatus {
+  ACTIVE
+  DUE
+  EXPIRED
+}
+
+enum MembershipSeatRole {
+  ADULT
+  KID
+}
+
+enum MembershipBillingPhase {
+  FIRST_POSTPAID
+  PREPAID
+}
+
+enum InvoiceChargeType {
+  POSTPAID_PRORATED
+  PREPAID_PRORATED
+  PREPAID_FULL
+  ADMISSION
+}
+
+enum FamilyMemberKind {
+  KID
+  CO_STUDENT
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI_MANUAL
+  RAZORPAY
+}
+
+enum AiProvider {
+  GROQ
+  GEMINI
+  OPENAI
+}
+
+enum ExpensePaymentMethod {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CARD
+  CHEQUE
+  OTHER
+}
+
+enum ExpenseRecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum SessionType {
+  REGULAR
+  TRIAL
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+enum AttendanceSource {
+  TRAINER
+  DESK
+  QR
+}
+
+enum BookingType {
+  OPEN_SEAT
+  TRIAL
+  PRIVATE
+  FLOOR_HIRE
+}
+
+enum MarketplaceCategory {
+  DANCE
+  MUSIC
+  FITNESS
+  ART
+}
+
+enum ClassLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum ClassAudience {
+  KIDS
+  ADULTS
+  BOTH
+}
+
+enum MarketplaceRatingTarget {
+  STUDIO
+  TRAINER
+}
+
+enum MarketplaceRatingSource {
+  TRIAL
+  CLASS
+  PRIVATE
+}
+
+enum MarketplaceSlugKind {
+  CLASS
+  STUDIO
+  TRAINER
+}
+
+enum BookingStatus {
+  AWAITING_PAYMENT
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum NotificationType {
+  MISSED_SESSION
+  SESSION_ADDED
+  SESSION_CHANGED
+  SESSION_CANCELLED
+  SUBSCRIPTION_EXPIRING
+  PAYMENT_OVERDUE
+  PAYMENT_RECEIVED
+  RENEWED
+  NOT_RENEWED
+  NEW_FOLLOW
+  CHAT_MESSAGE
+  TRAINER_PAYOUT
+  DATA_IMPORT_COMPLETE
+  STUDIO_PLAN_INVOICE
+  BOOKING_REQUESTED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULE_REQUESTED
+  BOOKING_RESCHEDULED
+  BOOKING_REMINDER
+}
+
+enum StudioPlan {
+  BASIC
+  ADVANCED
+}
+
+enum StudioInvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  VOID
+}
+
+enum StudioInvoicePaymentMethod {
+  CASH
+  UPI_MANUAL
+}
+
+enum TrainerPayoutStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
+enum NotificationChannel {
+  IN_APP
+  PUSH
+  EMAIL
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum StudioDataImportStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum NotificationStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  SOME_EXPERIENCE
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum Gender {
+  FEMALE
+  MALE
+}
+
+enum AgeRange {
+  UNDER_10
+  TEN_TO_TWENTY
+  TWENTY_TO_FORTY
+  FORTY_PLUS
+}
+
+enum FollowRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ConversationType {
+  DM
+  GROUP
+  BATCH
+}
+
+enum ConversationRole {
+  ADMIN
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  POLL
+  EVENT
+  LOCATION
+  SYSTEM
+}
+
+enum EventRsvpStatus {
+  GOING
+  MAYBE
+  DECLINED
+}
+
+enum ContestStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  COMPLETED
+  CANCELLED
+}
+
+enum ContestEntryType {
+  INDIVIDUAL
+  GROUP
+}
+
+enum ContestEntryStatus {
+  PENDING
+  CONFIRMED
+  WITHDRAWN
+}
+
+enum BranchMediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum BranchMediaCategory {
+  STUDIO
+  RECEPTION
+  PRACTICE_HALL
+  EVENTS
+  FACILITIES
+  OTHER
+}
+
+model User {
+  id                String            @id @default(cuid())
+  firebaseUid       String            @unique
+  encryptedKey      String
+  piiCiphertext     String
+  piiIv             String
+  emailHash         String
+  role              UserRole
+  photoUrl          String?
+  bannerUrl         String?
+  coverUrl          String?
+  styles                 String[]
+  experienceLevel        ExperienceLevel?
+  scheduleVibe           String[]          @default([])
+  gender                 Gender?
+  dateOfBirth            DateTime?
+  ageYears               Int?
+  ageRange               AgeRange?
+  preferredBranchId      String?
+  onboardingCompletedAt  DateTime?
+  profileVisibility      ProfileVisibility @default(PRIVATE)
+  studioId               String?
+  publicSlug             String?           @unique
+  trainerRatingAvg       Float?
+  trainerRatingCount     Int               @default(0)
+  active                 Boolean           @default(true)
+  mustChangePassword     Boolean           @default(false)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  studio            Studio?           @relation("StudioMembers", fields: [studioId], references: [id])
+  trainedStudios    TrainerStudio[]
+  trainerCategories TrainerMarketplaceCategory[]
+  trainerAvailabilities TrainerAvailability[]
+  trainerBlocks     TrainerBlock[]
+  marketplaceRatingsGiven MarketplaceRating[] @relation("MarketplaceRatingAuthor")
+  trainerMarketplaceRatings MarketplaceRating[] @relation("TrainerMarketplaceRatings")
+  preferredBranch   StudioBranch?     @relation("UserPreferredBranch", fields: [preferredBranchId], references: [id], onDelete: SetNull)
+  ownedStudio       Studio?           @relation("StudioOwner")
+  parentLinks       ParentChild[]     @relation("Parent")
+  childLinks        ParentChild[]     @relation("Child")
+  ownedFamilyMembers FamilyMember[]   @relation("FamilyOwner")
+  familyMemberships  FamilyMember[]   @relation("FamilyMemberUser")
+  createdBatches    Batch[]           @relation("BatchCreator")
+  trainedBatches    BatchTrainer[]
+  batchEnrollments  BatchEnrollment[]
+  batchRatings      BatchRating[]
+  createdSubscriptions Subscription[] @relation("SubscriptionCreator")
+  purchasedMemberships Membership[]   @relation("MembershipPurchaser")
+  membershipSeats      MembershipCoveredStudent[]
+  invoices             Invoice[]
+  markedAttendance  Attendance[]      @relation("AttendanceMarker")
+  attendanceRecords Attendance[]      @relation("StudentAttendance")
+  bookings          Booking[]         @relation("StudentBookings")
+  trainerBookings   Booking[]         @relation("TrainerBookings")
+  notifications            Notification[]
+  pushDevices              PushDevice[]
+  notificationPreferences  NotificationPreference[]
+  posts                    Post[]            @relation("PostAuthor")
+  postLikes         PostLike[]
+  postComments      PostComment[]     @relation("CommentAuthor")
+  following         Follow[]          @relation("Following")
+  followers         Follow[]          @relation("Followers")
+  followRequestsSent     FollowRequest[] @relation("FollowRequester")
+  followRequestsReceived FollowRequest[] @relation("FollowTarget")
+  conversationsCreated    Conversation[]       @relation("ConversationCreator")
+  conversationMemberships ConversationMember[]
+  messagesSent            Message[]            @relation("MessageSender")
+  messageReactions        MessageReaction[]
+  pollVotes               PollVote[]
+  eventRsvps              ChatEventRsvp[]
+  contestsCreated         Contest[]            @relation("ContestCreator")
+  contestJudgeships       ContestJudge[]
+  contestEntriesRegistered ContestEntry[]      @relation("ContestEntryRegistrar")
+  contestEntryMemberships ContestEntryMember[]
+  contestScores           ContestScore[]
+  contestCertificatesIssued ContestCertificate[] @relation("ContestCertificateIssuer")
+  studentGoals              StudentGoal[]
+  studentAchievements       StudentAchievement[]
+  staffInvitesCreated       StaffInvite[]        @relation("StaffInviteCreator")
+  createdExpenses           Expense[]            @relation("ExpenseCreator")
+  updatedExpenses           Expense[]            @relation("ExpenseUpdater")
+  createdRecurringExpenses  RecurringExpense[]   @relation("RecurringExpenseCreator")
+  updatedRecurringExpenses  RecurringExpense[]   @relation("RecurringExpenseUpdater")
+  createdExpenseCategories  ExpenseCategory[]    @relation("ExpenseCategoryCreator")
+  updatedExpenseCategories  ExpenseCategory[]    @relation("ExpenseCategoryUpdater")
+  leadRemarks               LeadRemark[]         @relation("LeadRemarks")
+  authoredLeadRemarks       LeadRemark[]         @relation("LeadRemarkAuthor")
+  taughtSessions            Session[]            @relation("SessionTrainer")
+  trainerPayouts            TrainerPayout[]      @relation("TrainerPayoutTrainer")
+  dataImportsRequested      StudioDataImport[]   @relation("DataImportRequester")
+  studioInvoicesBilled      StudioInvoice[]      @relation("StudioInvoiceBilledUser")
+  studioInvoicesCreated     StudioInvoice[]      @relation("StudioInvoiceCreator")
+
+  @@index([studioId, emailHash])
+  @@index([preferredBranchId])
+}
+
+model LeadRemark {
+  id        String   @id @default(cuid())
+  studioId  String
+  studentId String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  studio  Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  student User   @relation("LeadRemarks", fields: [studentId], references: [id], onDelete: Cascade)
+  author  User   @relation("LeadRemarkAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, studentId, createdAt])
+}
+
+model ParentChild {
+  id           String @id @default(cuid())
+  parentUserId String
+  childUserId  String
+
+  parent User @relation("Parent", fields: [parentUserId], references: [id], onDelete: Cascade)
+  child  User @relation("Child", fields: [childUserId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, childUserId])
+}
+
+model FamilyMember {
+  id           String           @id @default(cuid())
+  ownerUserId  String
+  memberUserId String
+  kind         FamilyMemberKind
+  createdAt    DateTime         @default(now())
+
+  owner  User @relation("FamilyOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  member User @relation("FamilyMemberUser", fields: [memberUserId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerUserId, memberUserId])
+  @@index([ownerUserId])
+}
+
+model Studio {
+  id              String       @id @default(cuid())
+  slug            String       @unique
+  name            String
+  status          StudioStatus @default(ACTIVE)
+  address         String?
+  photos          String[]
+  contact         String?
+  logoUrl         String?
+  heroMobileUrl   String?
+  heroDesktopUrl  String?
+  tagline         String?
+  about           String?      @db.Text
+  foundedYear     Int?
+  email           String?
+  whatsapp        String?
+  instagramUrl    String?
+  youtubeUrl      String?
+  websiteUrl      String?
+  whatToBring     String?
+  trialBlurb      String?
+  primaryCategory MarketplaceCategory @default(DANCE)
+  ratingAvg       Float?
+  ratingCount     Int                 @default(0)
+  ownerId         String       @unique
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @default(now()) @updatedAt
+
+  owner                User                 @relation("StudioOwner", fields: [ownerId], references: [id])
+  members              User[]               @relation("StudioMembers")
+  trainerLinks         TrainerStudio[]
+  marketplaceCategories StudioMarketplaceCategory[]
+  marketplaceRatings   MarketplaceRating[] @relation("StudioMarketplaceRatings")
+  settings             StudioSettings?
+  branches             StudioBranch[]
+  batches              Batch[]
+  subscriptions        Subscription[]
+  invoices             Invoice[]
+  bookings             Booking[]
+  certificateTemplates CertificateTemplate[]
+  contests             Contest[]
+  studentGoals         StudentGoal[]
+  achievements         Achievement[]
+  staffInvites         StaffInvite[]
+  expenseCategories    ExpenseCategory[]
+  expenses             Expense[]
+  recurringExpenses    RecurringExpense[]
+  batchSummaries       BatchSummary[]
+  revenueSummaries     StudioRevenueSummary[]
+  leadRemarks          LeadRemark[]
+  trainerPayouts       TrainerPayout[]
+  studioFeatures       StudioFeature[]
+  dataImports          StudioDataImport[]
+  studioInvoices       StudioInvoice[]
+  notifications        Notification[]
+  outboxEvents         OutboxEvent[]
+}
+
+model StudioInvoice {
+  id             String                      @id @default(cuid())
+  studioId       String
+  billedUserId   String
+  createdById    String
+  status         StudioInvoiceStatus         @default(DRAFT)
+  plan           StudioPlan
+  listAmount     Decimal                     @db.Decimal(10, 2)
+  discount       Decimal                     @default(0) @db.Decimal(10, 2)
+  periodStart    DateTime
+  periodEnd      DateTime
+  usageSnapshot  Json
+  notes          String?
+  publishedAt    DateTime?
+  paidAt         DateTime?
+  paymentMethod  StudioInvoicePaymentMethod?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  studio     Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  billedUser User   @relation("StudioInvoiceBilledUser", fields: [billedUserId], references: [id], onDelete: Restrict)
+  createdBy  User   @relation("StudioInvoiceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([studioId, status])
+  @@index([studioId, periodStart])
+  @@index([billedUserId])
+}
+
+model Feature {
+  id              String          @id @default(cuid())
+  key             String          @unique
+  name            String
+  description     String
+  category        String
+  globallyEnabled Boolean         @default(true)
+  dependsOnKeys   String[]        @default([])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  studioFeatures  StudioFeature[]
+}
+
+model StudioFeature {
+  studioId  String
+  featureId String
+  enabled   Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studio  Studio  @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@id([studioId, featureId])
+  @@index([studioId])
+}
+
+model StudioRevenueSummary {
+  id              String   @id @default(cuid())
+  studioId        String
+  period          String
+  grossRevenue    Decimal  @default(0) @db.Decimal(12, 2)
+  refunds         Decimal  @default(0) @db.Decimal(12, 2)
+  netRevenue      Decimal  @default(0) @db.Decimal(12, 2)
+  paidInvoices    Int      @default(0)
+  pendingInvoices Int      @default(0)
+  updatedAt       DateTime @updatedAt
+
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@unique([studioId, period])
+  @@index([studioId, period])
+}
+
+model StudioSettings {
+  studioId           String      @id
+  graceDays          Int         @default(3)
+  expireAlertDays    Int         @default(7)
+  platformFeePercent Float       @default(5)
+  gstPercent         Float       @default(0)
+  admissionFee       Decimal     @default(0) @db.Decimal(10, 2)
+  timezone           String      @default("Asia/Kolkata")
+  razorpayKeyId              String?
+  razorpayKeySecret          String?
+  razorpaySecretIv           String?
+  razorpayWebhookSecret      String?
+  razorpayWebhookSecretIv    String?
+  danceStyles                Json?
+  gstNumber          String?
+  aiProvider         AiProvider?
+  aiApiKey           String?
+  aiApiKeyIv         String?
+  aiChatModel        String?
+  publicStudioListing Boolean @default(true)
+  publicClasses       Boolean @default(true)
+  publicTrainers      Boolean @default(true)
+  publicRatings       Boolean @default(true)
+  bookingTrial        Boolean @default(true)
+  bookingEnrollment   Boolean @default(true)
+  bookingPrivate      Boolean @default(false)
+  bookingFloorHire    Boolean @default(false)
+  privateSessionPaise     Int?
+  privateSessionMinutes   Int     @default(60)
+  floorHirePaise          Int?
+  floorHireSlotMinutes    Int     @default(60)
+
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+}
+
+model StudioMarketplaceCategory {
+  studioId String
+  category MarketplaceCategory
+
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@id([studioId, category])
+  @@index([category])
+}
+
+model TrainerStudio {
+  trainerId              String
+  studioId               String
+  isHome                 Boolean  @default(false)
+  privateSessionPaise    Int?
+  privateSessionMinutes  Int?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  trainer User   @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  studio  Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, studioId])
+  @@index([studioId])
+}
+
+model TrainerAvailability {
+  id        String   @id @default(cuid())
+  trainerId String
+  weekday   Int
+  startsAt  String
+  endsAt    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trainer User @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, weekday, startsAt, endsAt])
+  @@index([trainerId, weekday])
+}
+
+model TrainerBlock {
+  id        String   @id @default(cuid())
+  trainerId String
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trainer User @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@index([trainerId, startsAt, endsAt])
+}
+
+model TrainerMarketplaceCategory {
+  trainerId String
+  category  MarketplaceCategory
+
+  trainer User @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, category])
+  @@index([category])
+}
+
+model MarketplaceRating {
+  id          String                    @id @default(cuid())
+  studentId   String
+  target      MarketplaceRatingTarget
+  studioId    String?
+  trainerId   String?
+  category    MarketplaceCategory
+  rating      Int
+  source      MarketplaceRatingSource
+  attendedAt  DateTime
+  uniqueKey   String                    @unique
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  student User    @relation("MarketplaceRatingAuthor", fields: [studentId], references: [id], onDelete: Cascade)
+  studio  Studio? @relation("StudioMarketplaceRatings", fields: [studioId], references: [id], onDelete: Cascade)
+  trainer User?   @relation("TrainerMarketplaceRatings", fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, category])
+  @@index([trainerId, category])
+  @@index([studentId, target])
+}
+
+model SlugRedirect {
+  id        String              @id @default(cuid())
+  kind      MarketplaceSlugKind
+  fromSlug  String
+  toSlug    String
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([kind, fromSlug])
+  @@index([kind, toSlug])
+}
+
+model StaffInvite {
+  id          String       @id @default(cuid())
+  studioId    String
+  email       String
+  role        UserRole
+  token       String       @unique
+  expiresAt   DateTime
+  status      InviteStatus @default(PENDING)
+  createdById String
+  acceptedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  studio    Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("StaffInviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([studioId, status])
+  @@index([token, status])
+  @@index([email, studioId])
+}
+
+model StudioBranch {
+  id           String   @id @default(cuid())
+  studioId     String
+  name         String
+  address      String
+  latitude     Float?
+  longitude    Float?
+  description  String?
+  coverMediaId String?  @unique
+  amenities    String[] @default([])
+  openingHours Json?
+  pricingBlurb String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  studio            Studio              @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  coverMedia        BranchMedia?        @relation("BranchCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  media             BranchMedia[]       @relation("BranchMediaItems")
+  faqs              BranchFaq[]
+  testimonials      BranchTestimonial[]
+  batches           Batch[]
+  contests          Contest[]
+  preferredByUsers  User[]              @relation("UserPreferredBranch")
+  expenses          Expense[]
+  bookings          Booking[]
+
+  @@unique([studioId, name])
+  @@index([studioId])
+}
+
+model BranchMedia {
+  id         String              @id @default(cuid())
+  branchId   String
+  kind       BranchMediaKind
+  category   BranchMediaCategory @default(STUDIO)
+  objectKey  String
+  caption    String?
+  altText    String?
+  sortOrder  Int                 @default(0)
+  metadata   Json?
+  archivedAt DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  branch   StudioBranch  @relation("BranchMediaItems", fields: [branchId], references: [id], onDelete: Cascade)
+  coverFor StudioBranch? @relation("BranchCover")
+
+  @@index([branchId, sortOrder])
+  @@index([branchId, archivedAt])
+}
+
+model BranchFaq {
+  id        String   @id @default(cuid())
+  branchId  String
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch StudioBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, sortOrder])
+}
+
+model BranchTestimonial {
+  id         String   @id @default(cuid())
+  branchId   String
+  quote      String
+  authorName String
+  rating     Int?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  branch StudioBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, sortOrder])
+}
+
+model CertificateTemplate {
+  id        String   @id @default(cuid())
+  studioId  String
+  name      String
+  isSample  Boolean  @default(false)
+  layoutJson Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studio            Studio             @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  batches           Batch[]
+  contests          Contest[]
+  contestCategories ContestCategory[]
+  contestCertificates ContestCertificate[]
+
+  @@unique([studioId, name])
+  @@index([studioId])
+}
+
+model Batch {
+  id                    String         @id @default(cuid())
+  studioId              String
+  branchId              String
+  name                  String
+  category              BatchCategory
+  danceCategories       Json
+  scheduleJson          Json
+  capacity              Int
+  enrollmentMode        EnrollmentMode
+  creatorId             String
+  active                Boolean        @default(true)
+  certificationEnabled  Boolean        @default(false)
+  certificateTemplateId String?
+  coverImageUrl         String?
+  slug                  String?        @unique
+  marketplaceCategory   MarketplaceCategory @default(DANCE)
+  classLevel            ClassLevel?
+  classAudience         ClassAudience  @default(ADULTS)
+  ratingAvg             Float?
+  ratingCount           Int            @default(0)
+
+  studio              Studio               @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  branch              StudioBranch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  creator             User                 @relation("BatchCreator", fields: [creatorId], references: [id])
+  certificateTemplate CertificateTemplate? @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
+  trainers            BatchTrainer[]
+  enrollments         BatchEnrollment[]
+  plans               BatchPlan[]
+  sessions            Session[]
+  conversation        Conversation?
+  bookings            Booking[]
+  ratings             BatchRating[]
+  summary             BatchSummary?
+  memberships         Membership[]
+
+  @@unique([studioId, branchId, name])
+  @@index([studioId, active])
+  @@index([marketplaceCategory, active])
+}
+
+model BatchSummary {
+  batchId         String   @id
+  studioId        String
+  capacity        Int
+  enrolled        Int      @default(0)
+  reserved        Int      @default(0)
+  availableSeats  Int      @default(0)
+  trainerCount    Int      @default(0)
+  active          Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+
+  batch  Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, active])
+}
+
+model BatchPlan {
+  id             String @id @default(cuid())
+  batchId        String
+  subscriptionId String
+
+  batch        Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, subscriptionId])
+  @@index([batchId])
+  @@index([subscriptionId])
+}
+
+model BatchRating {
+  id        String   @id @default(cuid())
+  batchId   String
+  studentId String
+  rating    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, studentId])
+  @@index([batchId])
+  @@index([studentId])
+}
+
+model BatchTrainer {
+  batchId   String
+  trainerId String
+  sortOrder Int      @default(0)
+
+  batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainer User  @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@id([batchId, trainerId])
+  @@index([batchId, sortOrder])
+}
+
+model BatchEnrollment {
+  id         String                @id @default(cuid())
+  batchId    String
+  studentId  String
+  enrolledAt DateTime              @default(now())
+  status     BatchEnrollmentStatus @default(ACTIVE)
+  endedAt    DateTime?
+  endReason  String?
+  endNote    String?
+
+  batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, studentId])
+  @@index([batchId, status])
+  @@index([studentId, status])
+}
+
+model Subscription {
+  id                  String               @id @default(cuid())
+  studioId            String
+  creatorId           String
+  name                String
+  kind                SubscriptionKind
+  individualAudience  IndividualAudience?
+  familyPack          FamilyPack?
+  billingCadence      BillingCadence       @default(MONTHLY)
+  adultSeats          Int
+  kidSeats            Int
+  price               Decimal              @db.Decimal(10, 2)
+  active              Boolean              @default(true)
+
+  studio      Studio       @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  creator     User         @relation("SubscriptionCreator", fields: [creatorId], references: [id])
+  memberships Membership[]
+  batchPlans  BatchPlan[]
+
+  @@unique([studioId, name])
+  @@index([studioId, active])
+}
+
+model Membership {
+  id               String                  @id @default(cuid())
+  subscriptionId   String
+  purchaserUserId  String
+  periodStart      DateTime
+  periodEnd        DateTime
+  status           MembershipStatus
+  billingPhase     MembershipBillingPhase  @default(PREPAID)
+  batchId          String?
+
+  subscription    Subscription               @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  purchaser       User                       @relation("MembershipPurchaser", fields: [purchaserUserId], references: [id], onDelete: Cascade)
+  coveredStudents MembershipCoveredStudent[]
+  invoices        Invoice[]
+  batch           Batch?                     @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([purchaserUserId])
+  @@index([subscriptionId, status])
+  @@index([batchId, status])
+}
+
+model MembershipCoveredStudent {
+  id           String             @id @default(cuid())
+  membershipId String
+  studentId    String
+  seatRole     MembershipSeatRole
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, studentId])
+  @@index([studentId])
+}
+
+model Invoice {
+  id                   String             @id @default(cuid())
+  studentId            String
+  membershipId         String?
+  amount               Decimal            @db.Decimal(10, 2)
+  referralDiscount     Decimal            @default(0) @db.Decimal(10, 2)
+  studioDiscount       Decimal            @default(0) @db.Decimal(10, 2)
+  familyDiscount       Decimal            @default(0) @db.Decimal(10, 2)
+  refundedAmount       Decimal            @default(0) @db.Decimal(10, 2)
+  status               InvoiceStatus
+  paymentMethod        PaymentMethod?
+  paidAt               DateTime?
+  refundedAt           DateTime?
+  platformFeePercent   Float
+  gstPercent           Float             @default(0)
+  studioId             String
+  razorpayOrderId         String?            @unique
+  razorpayPaymentId       String?            @unique
+  razorpayPaymentLinkId   String?            @unique
+  razorpayPaymentLinkUrl  String?
+  paymentHoldExpiresAt    DateTime?
+  purchaseMeta            Json?
+  combineMeta             Json?
+  chargeType              InvoiceChargeType  @default(PREPAID_FULL)
+  attendedSessionCount    Int?
+  billedSessionCount      Int?
+  periodStart             DateTime
+  periodEnd               DateTime
+
+  student    User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  membership Membership? @relation(fields: [membershipId], references: [id])
+  studio     Studio      @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  whatsappMessage WhatsappMessage?
+
+  @@index([status, paymentHoldExpiresAt])
+  @@index([studioId, id])
+  @@index([studentId])
+  @@index([studioId, periodStart])
+}
+
+model WhatsappMessage {
+  id         String         @id @default(cuid())
+  invoiceId  String         @unique
+  userId     String
+  studioId   String
+  template   String
+  status     DeliveryStatus @default(PENDING)
+  providerId String?
+  errorCode  String?
+  sentAt     DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, createdAt(sort: Desc)])
+  @@index([status, updatedAt])
+}
+
+model ExpenseCategory {
+  id         String    @id @default(cuid())
+  studioId   String
+  name       String
+  icon       String?
+  isDefault  Boolean   @default(false)
+  createdById String?
+  updatedById String?
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  studio   Studio    @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+  recurringExpenses RecurringExpense[]
+  createdBy User?    @relation("ExpenseCategoryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?    @relation("ExpenseCategoryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([studioId, name])
+  @@index([studioId, archivedAt])
+}
+
+model Expense {
+  id                 String                @id @default(cuid())
+  studioId           String
+  branchId           String?
+  amount             Decimal               @db.Decimal(10, 2)
+  expenseDate        DateTime
+  categoryId         String
+  vendor             String?
+  paymentMethod      ExpensePaymentMethod?
+  description        String?
+  notes              String?
+  receiptKey         String?
+  recurringExpenseId String?
+  createdById        String
+  updatedById        String?
+  archivedAt         DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  studio           Studio           @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  branch           StudioBranch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  category         ExpenseCategory  @relation(fields: [categoryId], references: [id])
+  createdBy        User             @relation("ExpenseCreator", fields: [createdById], references: [id])
+  updatedBy        User?            @relation("ExpenseUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  recurringExpense RecurringExpense? @relation(fields: [recurringExpenseId], references: [id])
+
+  @@index([studioId, expenseDate])
+  @@index([studioId, categoryId])
+  @@index([studioId, vendor])
+  @@index([studioId, archivedAt])
+}
+
+model RecurringExpense {
+  id             String                    @id @default(cuid())
+  studioId       String
+  categoryId     String
+  amount         Decimal                   @db.Decimal(10, 2)
+  frequency      ExpenseRecurrenceFrequency
+  startDate      DateTime
+  endDate        DateTime?
+  nextOccurrence DateTime
+  vendor         String?
+  paymentMethod  ExpensePaymentMethod?
+  description    String?
+  notes          String?
+  active         Boolean                   @default(true)
+  createdById    String
+  updatedById    String?
+  archivedAt     DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  studio    Studio          @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  category  ExpenseCategory @relation(fields: [categoryId], references: [id])
+  createdBy User            @relation("RecurringExpenseCreator", fields: [createdById], references: [id])
+  updatedBy User?           @relation("RecurringExpenseUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  expenses  Expense[]
+
+  @@index([studioId, active])
+  @@index([studioId, nextOccurrence])
+}
+
+model Session {
+  id        String        @id @default(cuid())
+  batchId   String
+  startsAt  DateTime
+  endsAt    DateTime
+  status    SessionStatus @default(SCHEDULED)
+  type      SessionType   @default(REGULAR)
+  trainerId String?
+
+  batch      Batch                 @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainer    User?                 @relation("SessionTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  attendance Attendance[]
+  bookings   Booking[]
+  payoutLinks TrainerPayoutSession[]
+
+  @@index([type, startsAt])
+  @@index([batchId, startsAt])
+  @@index([status, trainerId])
+}
+
+model TrainerPayout {
+  id           String             @id @default(cuid())
+  studioId     String
+  trainerId    String
+  periodStart  DateTime
+  periodEnd    DateTime
+  sessionCount Int
+  amount       Decimal?           @db.Decimal(10, 2)
+  notes        String?
+  status       TrainerPayoutStatus @default(DRAFT)
+  sentAt       DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  studio   Studio                 @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  trainer  User                   @relation("TrainerPayoutTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  sessions TrainerPayoutSession[]
+
+  @@unique([studioId, trainerId, periodStart])
+  @@index([studioId, status, periodStart])
+  @@index([trainerId, status])
+}
+
+model TrainerPayoutSession {
+  id        String @id @default(cuid())
+  payoutId  String
+  sessionId String
+
+  payout  TrainerPayout @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  session Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([payoutId, sessionId])
+  @@index([sessionId])
+}
+
+model Attendance {
+  id         String           @id @default(cuid())
+  sessionId  String
+  studentId  String
+  status     AttendanceStatus
+  markedById String
+  source     AttendanceSource
+
+  session  Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student  User    @relation("StudentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+  markedBy User    @relation("AttendanceMarker", fields: [markedById], references: [id])
+
+  @@unique([sessionId, studentId])
+}
+
+model Booking {
+  id                   String        @id @default(cuid())
+  studioId             String
+  studentId            String
+  type                 BookingType
+  batchId              String?
+  sessionId            String?
+  trainerId            String?
+  branchId             String?
+  status               BookingStatus @default(PENDING)
+  notes                String?
+  startsAt             DateTime?
+  endsAt               DateTime?
+  paymentHoldExpiresAt DateTime?
+  razorpayOrderId      String?       @unique
+  razorpayPaymentId    String?       @unique
+
+  studio  Studio   @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  student User     @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  session Session? @relation(fields: [sessionId], references: [id])
+  trainer User?    @relation("TrainerBookings", fields: [trainerId], references: [id])
+  branch  StudioBranch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([branchId])
+  @@index([status, paymentHoldExpiresAt])
+  @@index([studentId, status])
+  @@index([trainerId, status])
+  @@index([studioId, status])
+}
+
+model Notification {
+  id         String             @id @default(cuid())
+  userId     String
+  studioId   String?
+  type       NotificationType
+  title      String
+  body       String
+  status     NotificationStatus @default(ACTIVE)
+  readAt     DateTime?
+  archivedAt DateTime?
+  deletedAt  DateTime?
+  dedupeKey  String?
+  deepLink   String?
+  actorId    String?
+  entityType String?
+  entityId   String?
+  meta       Json?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studio     Studio?                @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, status, createdAt(sort: Desc)])
+  @@index([userId, readAt, status])
+  @@index([studioId, createdAt(sort: Desc)])
+}
+
+model NotificationDelivery {
+  id             String              @id @default(cuid())
+  notificationId String
+  channel        NotificationChannel
+  status         DeliveryStatus      @default(PENDING)
+  providerId     String?
+  errorCode      String?
+  attemptCount   Int                 @default(0)
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId, channel])
+  @@index([status, updatedAt])
+}
+
+model NotificationPreference {
+  id                String              @id @default(cuid())
+  userId            String
+  type              String
+  channel           NotificationChannel
+  enabled           Boolean             @default(true)
+  quietStartMinutes Int?
+  quietEndMinutes   Int?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, channel])
+}
+
+model PushDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  platform   String   @default("web")
+  appVersion String?
+  userAgent  String?
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model OutboxEvent {
+  id          String    @id @default(cuid())
+  type        String
+  payload     Json
+  studioId    String?
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+  claimedAt   DateTime?
+  attempts    Int       @default(0)
+
+  studio Studio? @relation(fields: [studioId], references: [id], onDelete: SetNull)
+
+  @@index([publishedAt, createdAt])
+  @@index([claimedAt])
+  @@index([studioId, publishedAt])
+}
+
+model StudioDataImport {
+  id                String                 @id @default(cuid())
+  studioId          String
+  requestedByUserId String
+  status            StudioDataImportStatus @default(PENDING)
+  payload           Json
+  entities          Json
+  error             String?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  studio      Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  requestedBy User   @relation("DataImportRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([studioId, createdAt])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model FollowRequest {
+  id          String              @id @default(cuid())
+  requesterId String
+  targetId    String
+  status      FollowRequestStatus @default(PENDING)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  requester User @relation("FollowRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  target    User @relation("FollowTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, targetId])
+  @@index([targetId, status])
+}
+
+model Post {
+  id         String   @id @default(cuid())
+  authorId   String
+  caption    String?
+  imageUrls  String[]
+  repostOfId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  author   User          @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  repostOf Post?         @relation("PostReposts", fields: [repostOfId], references: [id], onDelete: SetNull)
+  reposts  Post[]        @relation("PostReposts")
+  likes    PostLike[]
+  comments PostComment[]
+
+  @@index([authorId, createdAt])
+  @@index([repostOfId])
+}
+
+model PostLike {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model Conversation {
+  id            String           @id @default(cuid())
+  type          ConversationType
+  title         String?
+  imageUrl      String?
+  batchId       String?          @unique
+  dmKey         String?          @unique
+  encryptedKey  String
+  createdById   String?
+  lastMessageAt DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  batch     Batch?               @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  createdBy User?                @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members   ConversationMember[]
+  messages  Message[]
+
+  @@index([lastMessageAt])
+}
+
+model ConversationMember {
+  conversationId String
+  userId         String
+  role           ConversationRole @default(MEMBER)
+  lastReadAt     DateTime?
+  joinedAt       DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id              String      @id @default(cuid())
+  conversationId  String
+  senderId        String
+  clientMessageId String?
+  type            MessageType
+  ciphertext      String?
+  iv              String?
+  imageUrls       String[]
+  audioUrl        String?
+  audioDuration   Int?
+  replyToId       String?
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+
+  conversation Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User              @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]         @relation("MessageReplies")
+  reactions    MessageReaction[]
+  poll         Poll?
+  event        ChatEvent?
+
+  @@unique([conversationId, senderId, clientMessageId])
+  @@index([conversationId, createdAt])
+}
+
+model MessageReaction {
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId, emoji])
+  @@index([userId])
+}
+
+model Poll {
+  id          String    @id @default(cuid())
+  messageId   String    @unique
+  question    String
+  multiSelect Boolean   @default(false)
+  closesAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  message Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  options PollOption[]
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  pollId String
+  label  String
+  order  Int
+
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  optionId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([optionId, userId])
+  @@index([userId])
+}
+
+model ChatEvent {
+  id            String    @id @default(cuid())
+  messageId     String    @unique
+  title         String
+  description   String?
+  startsAt      DateTime
+  endsAt        DateTime?
+  locationLabel String?
+  latitude      Float?
+  longitude     Float?
+  createdAt     DateTime  @default(now())
+
+  message Message         @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  rsvps   ChatEventRsvp[]
+}
+
+model ChatEventRsvp {
+  eventId   String
+  userId    String
+  status    EventRsvpStatus
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  event ChatEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+}
+
+model Contest {
+  id                     String        @id @default(cuid())
+  studioId               String
+  branchId               String?
+  title                  String
+  description            String?
+  startsAt               DateTime
+  endsAt                 DateTime
+  registrationOpensAt    DateTime?
+  registrationClosesAt   DateTime?
+  status                 ContestStatus @default(DRAFT)
+  creatorId              String
+  certificationEnabled   Boolean       @default(false)
+  certificateTemplateId  String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  studio              Studio               @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  branch              StudioBranch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  creator             User                 @relation("ContestCreator", fields: [creatorId], references: [id])
+  certificateTemplate CertificateTemplate? @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
+  categories          ContestCategory[]
+
+  @@index([studioId, status])
+  @@index([studioId, startsAt])
+}
+
+model ContestCategory {
+  id                    String           @id @default(cuid())
+  contestId             String
+  name                  String
+  danceStyle            String
+  ageMin                Int
+  ageMax                Int
+  entryType             ContestEntryType
+  maxEntries            Int?
+  maxGroupSize          Int?
+  certificateTemplateId String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  contest             Contest              @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  certificateTemplate CertificateTemplate? @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
+  judges              ContestJudge[]
+  entries             ContestEntry[]
+
+  @@index([contestId])
+}
+
+model ContestJudge {
+  categoryId String
+  judgeId    String
+
+  category ContestCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  judge    User            @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, judgeId])
+}
+
+model ContestEntry {
+  id             String             @id @default(cuid())
+  categoryId     String
+  teamName       String?
+  status         ContestEntryStatus @default(CONFIRMED)
+  registeredById String
+  placement      Int?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  category     ContestCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  registeredBy User                 @relation("ContestEntryRegistrar", fields: [registeredById], references: [id])
+  members      ContestEntryMember[]
+  scores       ContestScore[]
+  certificate  ContestCertificate?
+
+  @@index([categoryId, status])
+}
+
+model ContestScore {
+  id        String   @id @default(cuid())
+  entryId   String
+  judgeId   String
+  score     Int
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entry ContestEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  judge User         @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, judgeId])
+  @@index([judgeId])
+  @@index([entryId])
+}
+
+model ContestEntryMember {
+  entryId   String
+  studentId String
+
+  entry   ContestEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  student User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, studentId])
+  @@index([studentId])
+}
+
+model ContestCertificate {
+  id                String   @id @default(cuid())
+  entryId           String   @unique
+  templateId        String
+  certificateNumber String
+  issuedAt          DateTime @default(now())
+  issuedById        String
+  layoutSnapshot    Json
+
+  entry    ContestEntry        @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  template CertificateTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  issuedBy User                @relation("ContestCertificateIssuer", fields: [issuedById], references: [id])
+
+  @@unique([certificateNumber])
+  @@index([certificateNumber])
+}
+
+enum StudentGoalType {
+  MONTHLY_SESSIONS
+}
+
+model StudentGoal {
+  id          String          @id @default(cuid())
+  userId      String
+  studioId    String
+  type        StudentGoalType @default(MONTHLY_SESSIONS)
+  target      Int
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studio Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@index([userId, studioId, periodStart])
+  @@index([studioId])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  studioId    String?
+  code        String   @unique
+  title       String
+  description String
+  icon        String
+  criteria    Json
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  studio              Studio?              @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  studentAchievements StudentAchievement[]
+
+  @@index([studioId, active])
+}
+
+model StudentAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+  meta          Json?
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+}

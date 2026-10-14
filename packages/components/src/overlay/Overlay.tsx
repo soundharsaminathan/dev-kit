@@ -1,7 +1,7 @@
+import { useIsMobile } from "@dev-ui/hooks";
 import { useContext } from "react";
 import { DialogContext } from "../dialog/dialog-context";
 import { Drawer } from "../drawer/Drawer";
-import { useIsMobile } from "../hooks/use-is-mobile";
 import { Modal } from "../modal/Modal";
 import { Popover, PopoverProvider } from "../popover/Popover";
 import type { OverlayProps } from "./overlay.types";

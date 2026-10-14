@@ -1,0 +1,14 @@
+.root {
+  display: inline-flex;
+}
+
+.trigger {
+  border: 1px solid color-mix(in srgb, var(--color-fg) 18%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
+  color: var(--color-fg);
+  border-radius: 4px;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}

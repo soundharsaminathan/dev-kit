@@ -1,0 +1,2195 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  InvoiceStatus,
+  PaymentMethod,
+  ProfileVisibility,
+  UserRole,
+} from "../generated/prisma/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DecryptedUser } from "../users/user-crypto.service";
+import { BillingService } from "./billing.service";
+
+const membershipsStub = {
+  renewFromPaidInvoice: vi.fn().mockResolvedValue(null),
+  assign: vi.fn(),
+  setInvoiceBillingCadence: vi.fn().mockResolvedValue(null),
+};
+
+const razorpayStub = {
+  isEnabled: vi.fn().mockReturnValue(false),
+  keyId: vi.fn().mockReturnValue(""),
+  createOrder: vi.fn(),
+  createRefund: vi.fn(),
+  createPaymentLink: vi.fn(),
+  cancelPaymentLink: vi.fn().mockResolvedValue(undefined),
+  verifyPaymentSignature: vi.fn().mockReturnValue(false),
+  fetchPaymentAmountPaise: vi.fn().mockResolvedValue(null),
+};
+
+const notificationsStub = {
+  create: vi.fn().mockResolvedValue({ id: "notif-1" }),
+};
+
+const emailStub = {
+  sendPaymentInvoice: vi.fn().mockResolvedValue(undefined),
+};
+
+const usersPresenter = {
+  presentLite: vi.fn(
+    async (user: { id: string; name?: string; photoUrl?: string | null }) => ({
+      id: user.id,
+      name: user.name ?? "Decrypted",
+      photoUrl: user.photoUrl ?? null,
+    }),
+  ),
+  presentLiteMany: vi.fn(
+    async (
+      users: Array<{ id: string; name?: string; photoUrl?: string | null }>,
+    ) =>
+      users.map((user) => ({
+        id: user.id,
+        name: user.name ?? "Decrypted",
+        photoUrl: user.photoUrl ?? null,
+        email: "decrypted@example.com",
+        phone: null as string | null,
+      })),
+  ),
+};
+
+function makeUser(overrides: Partial<DecryptedUser> = {}): DecryptedUser {
+  return {
+    id: "owner-1",
+    firebaseUid: "dev-owner-1",
+    email: "owner@stepup.dev",
+    name: "Owner",
+    phone: null,
+    role: UserRole.OWNER,
+    bio: null,
+    photoUrl: null,
+    instagramUrl: null,
+    styles: [],
+    profileVisibility: ProfileVisibility.PRIVATE,
+    studioId: "studio-1",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+describe("BillingService.getTrainerAnalytics", () => {
+  const prisma = {
+    user: { findFirst: vi.fn() },
+    studioBranch: { findFirst: vi.fn() },
+    batch: { findMany: vi.fn() },
+    batchTrainer: { findMany: vi.fn() },
+    invoice: { findMany: vi.fn() },
+  };
+
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => ({
+      ...user,
+      name: user.name ?? "Decrypted",
+    })),
+  };
+
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      usersPresenter as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
+    );
+  });
+
+  it("rejects trainers from payment analytics", async () => {
+    await expect(
+      service.getTrainerAnalytics(
+        makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+        "trainer-1",
+        "studio-1",
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.getTrainerAnalytics(
+        makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+        "trainer-2",
+        "studio-1",
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("rejects studio mismatch", async () => {
+    await expect(
+      service.getTrainerAnalytics(makeUser(), "trainer-1", "studio-other"),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("rejects missing trainer", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.getTrainerAnalytics(makeUser(), "trainer-1", "studio-1"),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("aggregates studio-wide analytics for all trainers", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Kids Hip-Hop",
+        enrollments: [{ studentId: "student-1" }],
+      },
+      {
+        id: "batch-2",
+        name: "Adult Contemporary",
+        enrollments: [{ studentId: "student-2" }],
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-2",
+        studentId: "student-2",
+        amount: 3000,
+        status: InvoiceStatus.PENDING,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-2", name: "Sam" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser(),
+      "all",
+      "studio-1",
+    );
+
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    expect(prisma.batchTrainer.findMany).not.toHaveBeenCalled();
+    expect(result.trainerId).toBe("all");
+    expect(result.trainerName).toBe("All trainers");
+    expect(result.studentCount).toBe(2);
+    expect(result.invoiceCount).toBe(2);
+    expect(result.totals).toEqual({
+      collected: 2000,
+      pending: 3000,
+      overdue: 0,
+      refunded: 0,
+      platformFees: 100,
+      netCollected: 1900,
+    });
+    expect(result.byBatch).toHaveLength(2);
+  });
+
+  it("aggregates invoices for students in the trainer's batches", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-1",
+          name: "Kids Hip-Hop",
+          enrollments: [{ studentId: "student-1" }, { studentId: "student-2" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.UPI_MANUAL,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-2",
+        studentId: "student-2",
+        amount: 1500,
+        status: InvoiceStatus.PENDING,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-2", name: "Sam" },
+      },
+      {
+        id: "inv-3",
+        studentId: "student-1",
+        amount: 500,
+        status: InvoiceStatus.OVERDUE,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser({ role: UserRole.STAFF }),
+      "trainer-1",
+      "studio-1",
+    );
+
+    expect(result.studentCount).toBe(2);
+    expect(result.invoiceCount).toBe(3);
+    expect(result.totals).toEqual({
+      collected: 2000,
+      pending: 1500,
+      overdue: 500,
+      refunded: 0,
+      platformFees: 100,
+      netCollected: 1900,
+    });
+    expect(result.byPaymentMethod.UPI_MANUAL).toEqual({
+      count: 1,
+      amount: 2000,
+    });
+    expect(result.byBatch[0]).toMatchObject({
+      batchId: "batch-1",
+      collected: 2000,
+      pending: 1500,
+      overdue: 500,
+      refunded: 0,
+      invoiceCount: 3,
+    });
+    expect(result.pendingPayments).toHaveLength(2);
+    expect(result.pendingPayments[0]?.status).toBe("OVERDUE");
+    expect(result.series.length).toBeGreaterThan(0);
+    expect(result.comparison.netCollectedDeltaPct).toBeNull();
+  });
+
+  it("credits combined invoice net amounts to each source batch", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-kid-a",
+        name: "Kids A",
+        enrollments: [{ studentId: "kid-1" }],
+      },
+      {
+        id: "batch-kid-b",
+        name: "Kids B",
+        enrollments: [{ studentId: "kid-2" }],
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-combined",
+        studentId: "owner-1",
+        amount: 1900,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-a",
+              studentId: "kid-1",
+              batchId: "batch-kid-a",
+              originalAmount: 1000,
+              allocatedDiscount: 50,
+              netAmount: 950,
+            },
+            {
+              invoiceId: "inv-b",
+              studentId: "kid-2",
+              batchId: "batch-kid-b",
+              originalAmount: 1000,
+              allocatedDiscount: 50,
+              netAmount: 950,
+            },
+          ],
+        },
+        membership: null,
+        student: { id: "owner-1", name: "Parent" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser(),
+      "all",
+      "studio-1",
+    );
+
+    expect(
+      result.byBatch.find((row) => row.batchId === "batch-kid-a"),
+    ).toMatchObject({
+      collected: 950,
+      invoiceCount: 1,
+    });
+    expect(
+      result.byBatch.find((row) => row.batchId === "batch-kid-b"),
+    ).toMatchObject({
+      collected: 950,
+      invoiceCount: 1,
+    });
+  });
+
+  it("tracks refunded totals without counting refunds as overdue", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-1",
+          name: "Kids Hip-Hop",
+          enrollments: [{ studentId: "student-1" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-paid",
+        studentId: "student-1",
+        amount: 2000,
+        refundedAmount: 500,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-10T12:00:00.000Z"),
+        refundedAt: new Date("2026-07-20T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-refunded",
+        studentId: "student-1",
+        amount: 1000,
+        refundedAmount: 1000,
+        status: InvoiceStatus.REFUNDED,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-05T12:00:00.000Z"),
+        refundedAt: new Date("2026-07-18T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser({ role: UserRole.STAFF }),
+      "trainer-1",
+      "studio-1",
+    );
+
+    expect(result.totals.collected).toBe(1500);
+    expect(result.totals.overdue).toBe(0);
+    expect(result.totals.refunded).toBe(1500);
+    expect(result.byStatus.REFUNDED).toEqual({ count: 1, amount: 1000 });
+    expect(result.byBatch[0]).toMatchObject({
+      collected: 1500,
+      overdue: 0,
+      refunded: 1500,
+    });
+  });
+
+  it("does not credit batch2 when shared students paid for batch1 (negative path)", async () => {
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Batch 1",
+        enrollments: [
+          { studentId: "s1" },
+          { studentId: "s2" },
+          { studentId: "s3" },
+        ],
+      },
+      {
+        id: "batch-2",
+        name: "Batch 2",
+        enrollments: [{ studentId: "s1" }, { studentId: "s2" }],
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-s1",
+        studentId: "s1",
+        amount: 1000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s1",
+          coveredStudents: [
+            { studentId: "s1", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: null,
+        student: { id: "s1", name: "S1" },
+      },
+      {
+        id: "inv-s2",
+        studentId: "s2",
+        amount: 1000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s2",
+          coveredStudents: [
+            { studentId: "s2", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: null,
+        student: { id: "s2", name: "S2" },
+      },
+      {
+        id: "inv-s3",
+        studentId: "s3",
+        amount: 1000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "s3",
+          coveredStudents: [
+            { studentId: "s3", seatRole: "KID", batchId: "batch-1" },
+          ],
+        },
+        membership: null,
+        student: { id: "s3", name: "S3" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser(),
+      "all",
+      "studio-1",
+    );
+
+    expect(result.totals.collected).toBe(3000);
+    expect(
+      result.byBatch.find((row) => row.batchId === "batch-1"),
+    ).toMatchObject({
+      collected: 3000,
+      invoiceCount: 3,
+    });
+    expect(
+      result.byBatch.find((row) => row.batchId === "batch-2"),
+    ).toMatchObject({
+      collected: 0,
+      invoiceCount: 0,
+    });
+  });
+
+  it("builds comparison and day series for a bounded range", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-1",
+          name: "Kids Hip-Hop",
+          enrollments: [{ studentId: "student-1" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-paid-current",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-15T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-paid-prior",
+        studentId: "student-1",
+        amount: 1000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-06-15T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        periodStart: new Date("2026-06-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-06-30T23:59:59.999Z"),
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-pending",
+        studentId: "student-1",
+        amount: 800,
+        status: InvoiceStatus.PENDING,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "student-1",
+          coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+        },
+        membership: { periodStart: new Date("2026-07-01T00:00:00.000Z") },
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser({ role: UserRole.STAFF }),
+      "trainer-1",
+      "studio-1",
+      {
+        from: "2026-07-01T00:00:00.000Z",
+        to: "2026-07-31T23:59:59.999Z",
+        bucket: "day",
+      },
+    );
+
+    expect(result.totals.collected).toBe(2000);
+    expect(result.comparison.collected).toBe(1000);
+    expect(result.comparison.netCollected).toBe(950);
+    expect(result.comparison.netCollectedDeltaPct).toBe(100);
+    expect(result.series.some((point) => point.collected === 2000)).toBe(true);
+    expect(result.pendingPayments[0]).toMatchObject({
+      invoiceId: "inv-pending",
+      dueDate: "2026-07-01T00:00:00.000Z",
+      batchId: "batch-1",
+      batchName: "Kids Hip-Hop",
+    });
+  });
+
+  it("filters analytics by billing month, not paidAt", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-1",
+          name: "Kids Hip-Hop",
+          enrollments: [{ studentId: "student-1" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-paid-later",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-09-10T12:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        periodStart: new Date("2026-08-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-08-31T23:59:59.999Z"),
+        student: { id: "student-1", name: "Alex" },
+      },
+      {
+        id: "inv-pending-other-month",
+        studentId: "student-1",
+        amount: 800,
+        status: InvoiceStatus.PENDING,
+        paymentMethod: null,
+        paidAt: null,
+        platformFeePercent: 5,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "student-1",
+          coveredStudents: [{ studentId: "student-1", seatRole: "ADULT" }],
+        },
+        membership: { periodStart: new Date("2026-07-01T00:00:00.000Z") },
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const august = await service.getTrainerAnalytics(
+      makeUser({ role: UserRole.STAFF }),
+      "trainer-1",
+      "studio-1",
+      {
+        from: "2026-08-01T00:00:00.000Z",
+        to: "2026-08-31T23:59:59.999Z",
+        bucket: "month",
+      },
+    );
+    expect(august.totals.collected).toBe(2000);
+    expect(august.pendingPayments).toHaveLength(0);
+
+    const september = await service.getTrainerAnalytics(
+      makeUser({ role: UserRole.STAFF }),
+      "trainer-1",
+      "studio-1",
+      {
+        from: "2026-09-01T00:00:00.000Z",
+        to: "2026-09-30T23:59:59.999Z",
+        bucket: "month",
+      },
+    );
+    expect(september.totals.collected).toBe(0);
+    expect(september.invoiceCount).toBe(0);
+  });
+
+  it("allows studio admins to view any trainer in their studio", async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([]);
+    prisma.invoice.findMany.mockResolvedValue([]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser({ role: UserRole.STAFF }),
+      "trainer-1",
+      "studio-1",
+    );
+
+    expect(result.trainerId).toBe("trainer-1");
+    expect(result.invoiceCount).toBe(0);
+    expect(result.byBatch).toEqual([]);
+  });
+
+  it("filters studio-wide analytics to the selected branch", async () => {
+    prisma.studioBranch.findFirst.mockResolvedValue({ id: "branch-1" });
+    prisma.batch.findMany.mockResolvedValue([
+      {
+        id: "batch-1",
+        name: "Main Hip-Hop",
+        enrollments: [{ studentId: "student-1" }],
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 2000,
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: new Date("2026-07-01T00:00:00.000Z"),
+        platformFeePercent: 5,
+        purchaseMeta: null,
+        membership: null,
+        student: { id: "student-1", name: "Alex" },
+      },
+    ]);
+
+    const result = await service.getTrainerAnalytics(
+      makeUser(),
+      "all",
+      "studio-1",
+      { branchId: "branch-1" },
+    );
+
+    expect(prisma.studioBranch.findFirst).toHaveBeenCalledWith({
+      where: { id: "branch-1", studioId: "studio-1" },
+      select: { id: true },
+    });
+    expect(prisma.batch.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { studioId: "studio-1", branchId: "branch-1" },
+      }),
+    );
+    expect(result.byBatch).toEqual([
+      expect.objectContaining({
+        batchId: "batch-1",
+        collected: 2000,
+      }),
+    ]);
+  });
+
+  it("scopes trainer analytics to batches at the selected branch", async () => {
+    prisma.studioBranch.findFirst.mockResolvedValue({ id: "branch-east" });
+    prisma.user.findFirst.mockResolvedValue({
+      id: "trainer-1",
+      name: "Lead Trainer",
+      role: UserRole.TRAINER,
+      studioId: "studio-1",
+    });
+    prisma.batchTrainer.findMany.mockResolvedValue([
+      {
+        batch: {
+          id: "batch-east",
+          name: "East Contemporary",
+          enrollments: [{ studentId: "student-2" }],
+        },
+      },
+    ]);
+    prisma.invoice.findMany.mockResolvedValue([]);
+
+    await service.getTrainerAnalytics(makeUser(), "trainer-1", "studio-1", {
+      branchId: "branch-east",
+    });
+
+    expect(prisma.batchTrainer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          trainerId: "trainer-1",
+          batch: { studioId: "studio-1", branchId: "branch-east" },
+        },
+      }),
+    );
+  });
+
+  it("rejects a branch that is not in the studio", async () => {
+    prisma.studioBranch.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.getTrainerAnalytics(makeUser(), "all", "studio-1", {
+        branchId: "branch-other",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.batch.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("BillingService.refundInvoice", () => {
+  const prisma = {
+    invoice: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    membershipCoveredStudent: { count: vi.fn() },
+    membership: { update: vi.fn() },
+    $transaction: vi.fn(),
+  };
+
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    razorpayStub.createRefund.mockResolvedValue({
+      refundId: "rfnd_1",
+      amount: 50000,
+    });
+    service = new BillingService(
+      prisma as never,
+      { decryptUser: vi.fn() } as never,
+      usersPresenter as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+    );
+  });
+
+  it("rejects refund amounts above the remaining balance", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 500,
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      razorpayPaymentId: null,
+      membershipId: null,
+      membership: null,
+      studio: { id: "studio-1", settings: null },
+    });
+
+    await expect(
+      service.refundInvoice("inv-1", { amount: 1600 }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("applies a partial cash refund and keeps the invoice paid", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 0,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      razorpayPaymentId: null,
+      membershipId: null,
+      membership: null,
+      studio: { id: "studio-1", settings: null },
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 750,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.PAID,
+    });
+
+    const result = await service.refundInvoice("inv-1", { amount: 750 });
+
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: {
+        refundedAmount: 750,
+        refundedAt: expect.any(Date),
+      },
+    });
+    expect(result.status).toBe(InvoiceStatus.PAID);
+    expect(result.refundedAmount).toBe(750);
+    expect(result.thisRefundAmount).toBe(750);
+    expect(razorpayStub.createRefund).not.toHaveBeenCalled();
+  });
+
+  it("marks the invoice refunded when the remaining balance is cleared", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 500,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      razorpayPaymentId: null,
+      membershipId: null,
+      membership: null,
+      studio: { id: "studio-1", settings: null },
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 2000,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.REFUNDED,
+    });
+
+    const result = await service.refundInvoice("inv-1", { amount: 1500 });
+
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: {
+        refundedAmount: 2000,
+        refundedAt: expect.any(Date),
+        status: InvoiceStatus.REFUNDED,
+      },
+    });
+    expect(result.status).toBe(InvoiceStatus.REFUNDED);
+    expect(result.thisRefundAmount).toBe(1500);
+  });
+
+  it("rejects a second refund after the invoice is already REFUNDED", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      amount: 2000,
+      refundedAmount: 2000,
+      status: InvoiceStatus.REFUNDED,
+      paymentMethod: PaymentMethod.CASH,
+      razorpayPaymentId: null,
+      membershipId: "mem-1",
+      membership: { id: "mem-1" },
+      studio: { id: "studio-1", settings: null },
+    });
+
+    await expect(
+      service.refundInvoice("inv-1", { amount: 100 }),
+    ).rejects.toThrow(/already been fully refunded/i);
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("BillingService.listForStudent", () => {
+  const prisma = {
+    invoice: { findMany: vi.fn() },
+    user: { findUnique: vi.fn() },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
+    batch: { findMany: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => ({
+      ...user,
+      name: user.name ?? "Decrypted",
+    })),
+  };
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      usersPresenter as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
+    );
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.batch.findMany.mockResolvedValue([]);
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-1",
+      studioId: "studio-1",
+    });
+  });
+
+  it("allows a student to list their own invoices", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 1500,
+        purchaseMeta: null,
+        combineMeta: null,
+        membership: null,
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
+      },
+    ]);
+    await expect(
+      service.listForStudent(
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+        "student-1",
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "inv-1",
+        amount: 1500,
+        batchName: null,
+        dueDate: "2026-08-01T00:00:00.000Z",
+        billPeriodLabel: "Aug 2026",
+      }),
+    ]);
+  });
+
+  it("returns stored bill period for unpaid invoices without membership", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-pending",
+        studentId: "student-1",
+        amount: 3500,
+        chargeType: "PREPAID_FULL",
+        purchaseMeta: null,
+        combineMeta: null,
+        membership: null,
+        periodStart: new Date(Date.UTC(2026, 5, 1)),
+        periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
+      },
+    ]);
+    await expect(
+      service.listForStudent(
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+        "student-1",
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "inv-pending",
+        billMonthKeys: ["2026-06"],
+        billPeriodLabel: "Jun 2026",
+        periodStart: "2026-06-01T00:00:00.000Z",
+      }),
+    ]);
+  });
+
+  it("rejects a student listing another student's invoices", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-2",
+      studioId: "studio-1",
+    });
+    prisma.familyMember.findUnique.mockResolvedValue(null);
+    prisma.parentChild.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.listForStudent(
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+        "student-2",
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.invoice.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects staff listing invoices for a student in another studio", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-other",
+      studioId: "studio-other",
+    });
+
+    await expect(
+      service.listForStudent(
+        makeUser({ role: UserRole.STAFF, studioId: "studio-1" }),
+        "student-other",
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.invoice.findMany).not.toHaveBeenCalled();
+  });
+
+  it("allows a linked parent to list a child's invoices", async () => {
+    prisma.parentChild.findUnique.mockResolvedValue({
+      parentUserId: "parent-1",
+      childUserId: "student-1",
+    });
+    prisma.familyMember.findUnique.mockResolvedValue(null);
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studentId: "student-1",
+        amount: 1500,
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "ADULT", batchId: "batch-1" },
+          ],
+        },
+        combineMeta: null,
+        membership: { periodStart: new Date("2026-07-01T00:00:00.000Z") },
+        periodStart: new Date("2026-07-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+      },
+    ]);
+    prisma.batch.findMany.mockResolvedValue([
+      { id: "batch-1", name: "Kids Hip-Hop" },
+    ]);
+
+    await expect(
+      service.listForStudent(
+        makeUser({ id: "parent-1", role: UserRole.PARENT }),
+        "student-1",
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "inv-1",
+        batchName: "Kids Hip-Hop",
+        dueDate: "2026-07-01T00:00:00.000Z",
+      }),
+    ]);
+  });
+});
+
+describe("BillingService.markPaid", () => {
+  const prisma = {
+    invoice: {
+      findUniqueOrThrow: vi.fn(),
+      update: vi.fn(),
+    },
+  };
+  const crypto = {
+    decryptUser: vi.fn(
+      (user: { name?: string; email?: string; id?: string }) => ({
+        id: user.id ?? "student-1",
+        name: user.name ?? "Student",
+        email: user.email ?? "student@example.com",
+      }),
+    ),
+  };
+  let service: BillingService;
+
+  function unpaidInvoice(
+    overrides: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    return {
+      id: "inv-1",
+      studentId: "student-1",
+      studioId: "studio-1",
+      amount: 2000,
+      status: InvoiceStatus.PENDING,
+      platformFeePercent: 5,
+      gstPercent: 0,
+      membershipId: null,
+      purchaseMeta: null,
+      student: {
+        id: "student-1",
+        name: "Student",
+        email: "student@example.com",
+      },
+      studio: { id: "studio-1", name: "classa Studio" },
+      periodStart: new Date("2026-07-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-07-31T23:59:59.999Z"),
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    membershipsStub.renewFromPaidInvoice.mockResolvedValue(null);
+    membershipsStub.setInvoiceBillingCadence.mockResolvedValue(null);
+    notificationsStub.create.mockResolvedValue({ id: "notif-1" });
+    emailStub.sendPaymentInvoice.mockResolvedValue(undefined);
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      usersPresenter as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
+    );
+  });
+
+  it("marks a pending invoice paid with method and fee", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(unpaidInvoice());
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 2000,
+      referralDiscount: 0,
+      studioDiscount: 0,
+    });
+
+    const result = await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      { paymentMethod: PaymentMethod.CASH },
+    );
+
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: expect.objectContaining({
+        status: InvoiceStatus.PAID,
+        paymentMethod: PaymentMethod.CASH,
+        paidAt: expect.any(Date),
+        amount: 2000,
+        referralDiscount: 0,
+        studioDiscount: 0,
+      }),
+    });
+    expect(result.platformFeeComputed).toBe(100);
+    expect(result.gstComputed).toBe(0);
+    expect(membershipsStub.renewFromPaidInvoice).not.toHaveBeenCalled();
+    expect(notificationsStub.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "student-1",
+        type: "PAYMENT_RECEIVED",
+        entityId: "inv-1",
+      }),
+    );
+    expect(emailStub.sendPaymentInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "student@example.com",
+        amountPaid: 2000,
+        subtotal: 2000,
+      }),
+    );
+  });
+
+  it("rejects marking a refunded invoice as paid", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ status: InvoiceStatus.REFUNDED }),
+    );
+
+    await expect(
+      service.markPaid(makeUser({ role: UserRole.OWNER }), "inv-1", {
+        paymentMethod: PaymentMethod.CASH,
+      }),
+    ).rejects.toThrow(/refunded/i);
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it("computes GST from the snapshotted invoice percent", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ gstPercent: 18 }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 2000,
+      referralDiscount: 0,
+      studioDiscount: 0,
+    });
+
+    const result = await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      { paymentMethod: PaymentMethod.CASH },
+    );
+
+    expect(result.gstComputed).toBe(360);
+    expect(emailStub.sendPaymentInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gstPercent: 18,
+        gstAmount: 360,
+      }),
+    );
+  });
+
+  it("applies referral and studio discounts to the paid amount", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(unpaidInvoice());
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 1700,
+      referralDiscount: 200,
+      studioDiscount: 100,
+    });
+
+    const result = await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      {
+        paymentMethod: PaymentMethod.CASH,
+        referralDiscount: 200,
+        studioDiscount: 100,
+      },
+    );
+
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: expect.objectContaining({
+        amount: 1700,
+        referralDiscount: 200,
+        studioDiscount: 100,
+      }),
+    });
+    expect(result.platformFeeComputed).toBe(85);
+    expect(result.subtotal).toBe(2000);
+  });
+
+  it("rejects discounts that exceed the invoice amount", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(unpaidInvoice());
+
+    await expect(
+      service.markPaid(makeUser({ role: UserRole.OWNER }), "inv-1", {
+        paymentMethod: PaymentMethod.CASH,
+        referralDiscount: 1500,
+        studioDiscount: 600,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.invoice.update).not.toHaveBeenCalled();
+  });
+
+  it("renews membership when paying a renewal invoice", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ membershipId: "mem-1" }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 2000,
+      referralDiscount: 0,
+      studioDiscount: 0,
+    });
+
+    await service.markPaid(makeUser({ role: UserRole.OWNER }), "inv-1", {
+      paymentMethod: PaymentMethod.CASH,
+    });
+
+    expect(membershipsStub.renewFromPaidInvoice).toHaveBeenCalledWith("mem-1");
+  });
+
+  it("assigns membership from purchaseMeta when marking paid", async () => {
+    membershipsStub.assign.mockResolvedValue({ id: "mem-new" });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({
+        amount: 4000,
+        purchaseMeta: {
+          subscriptionId: "sub-fam",
+          purchaserUserId: "parent-1",
+          coveredStudents: [
+            { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
+            { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
+          ],
+        },
+      }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      amount: 4000,
+      referralDiscount: 0,
+      studioDiscount: 0,
+    });
+
+    await service.markPaid(makeUser({ role: UserRole.OWNER }), "inv-1", {
+      paymentMethod: PaymentMethod.CASH,
+    });
+
+    expect(membershipsStub.assign).toHaveBeenCalledWith({
+      subscriptionId: "sub-fam",
+      purchaserUserId: "parent-1",
+      coveredStudents: [
+        { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
+        { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
+      ],
+    });
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: expect.objectContaining({
+        status: InvoiceStatus.PAID,
+        membershipId: "mem-new",
+      }),
+    });
+    const updateData = prisma.invoice.update.mock.calls[0]?.[0]?.data as {
+      purchaseMeta?: unknown;
+    };
+    expect(updateData.purchaseMeta).toBeUndefined();
+  });
+
+  it("renews seated combined sources instead of re-assigning", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({
+        studentId: "owner-1",
+        amount: 4950,
+        familyDiscount: 50,
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-a",
+              studentId: "kid-1",
+              batchId: "batch-kid",
+              originalAmount: 2500,
+              allocatedDiscount: 25,
+              netAmount: 2475,
+              membershipId: "mem-a",
+              purchaseMeta: {
+                subscriptionId: "sub-kid",
+                purchaserUserId: "kid-1",
+                coveredStudents: [
+                  { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+                ],
+              },
+            },
+            {
+              invoiceId: "inv-b",
+              studentId: "kid-2",
+              batchId: "batch-kid",
+              originalAmount: 2500,
+              allocatedDiscount: 25,
+              netAmount: 2475,
+              membershipId: "mem-b",
+              purchaseMeta: {
+                subscriptionId: "sub-kid",
+                purchaserUserId: "kid-2",
+                coveredStudents: [
+                  { studentId: "kid-2", seatRole: "KID", batchId: "batch-kid" },
+                ],
+              },
+            },
+          ],
+        },
+      }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      amount: 4950,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      familyDiscount: 50,
+    });
+
+    await service.markPaid(makeUser({ role: UserRole.STAFF }), "inv-1", {
+      paymentMethod: PaymentMethod.CASH,
+    });
+
+    expect(membershipsStub.assign).not.toHaveBeenCalled();
+    expect(membershipsStub.renewFromPaidInvoice).toHaveBeenCalledWith("mem-a");
+    expect(membershipsStub.renewFromPaidInvoice).toHaveBeenCalledWith("mem-b");
+  });
+
+  it("assigns checkout-hold combined sources that were never seated", async () => {
+    membershipsStub.assign.mockResolvedValue({ id: "mem-hold" });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({
+        studentId: "owner-1",
+        combineMeta: {
+          sources: [
+            {
+              invoiceId: "inv-a",
+              studentId: "kid-1",
+              batchId: "batch-kid",
+              originalAmount: 2500,
+              allocatedDiscount: 0,
+              netAmount: 2500,
+              purchaseMeta: {
+                subscriptionId: "sub-kid",
+                purchaserUserId: "kid-1",
+                coveredStudents: [
+                  { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+                ],
+              },
+            },
+          ],
+        },
+      }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      amount: 2500,
+      referralDiscount: 0,
+      studioDiscount: 0,
+    });
+
+    await service.markPaid(makeUser({ role: UserRole.STAFF }), "inv-1", {
+      paymentMethod: PaymentMethod.CASH,
+    });
+
+    expect(membershipsStub.assign).toHaveBeenCalledWith({
+      subscriptionId: "sub-kid",
+      purchaserUserId: "kid-1",
+      coveredStudents: [
+        { studentId: "kid-1", seatRole: "KID", batchId: "batch-kid" },
+      ],
+    });
+    expect(membershipsStub.renewFromPaidInvoice).not.toHaveBeenCalled();
+  });
+
+  it("rejects trainers marking invoices paid", async () => {
+    await expect(
+      service.markPaid(
+        makeUser({ id: "trainer-1", role: UserRole.TRAINER }),
+        "inv-1",
+        { paymentMethod: PaymentMethod.CASH },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.invoice.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
+  it("rejects already-paid invoices", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ status: InvoiceStatus.PAID }),
+    );
+
+    await expect(
+      service.markPaid(makeUser({ role: UserRole.STAFF }), "inv-1", {
+        paymentMethod: PaymentMethod.UPI_MANUAL,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects marking invoices for another studio", async () => {
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ studioId: "studio-other" }),
+    );
+
+    await expect(
+      service.markPaid(
+        makeUser({ role: UserRole.OWNER, studioId: "studio-1" }),
+        "inv-1",
+        { paymentMethod: PaymentMethod.CASH },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("applies billingCadence before discounts and mark-paid", async () => {
+    membershipsStub.setInvoiceBillingCadence.mockImplementation(async () => {
+      prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+        unpaidInvoice({ amount: 5499 }),
+      );
+      return {
+        invoice: { id: "inv-1", amount: 5499 },
+        membership: { id: "mem-1" },
+      };
+    });
+    prisma.invoice.findUniqueOrThrow.mockResolvedValue(
+      unpaidInvoice({ amount: 1999, membershipId: "mem-1" }),
+    );
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.CASH,
+      paidAt: new Date("2026-07-20T12:00:00.000Z"),
+      amount: 4999,
+      referralDiscount: 500,
+      studioDiscount: 0,
+    });
+
+    const result = await service.markPaid(
+      makeUser({ role: UserRole.OWNER }),
+      "inv-1",
+      {
+        paymentMethod: PaymentMethod.CASH,
+        billingCadence: "QUARTERLY" as never,
+        referralDiscount: 500,
+      },
+    );
+
+    expect(membershipsStub.setInvoiceBillingCadence).toHaveBeenCalledWith(
+      "inv-1",
+      "QUARTERLY",
+    );
+    expect(prisma.invoice.update).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+      data: expect.objectContaining({
+        amount: 4999,
+        referralDiscount: 500,
+      }),
+    });
+    expect(result.subtotal).toBe(5499);
+  });
+});
+
+describe("BillingService.listByStudio", () => {
+  const prisma = {
+    invoice: { findMany: vi.fn() },
+    subscription: { findMany: vi.fn() },
+    batchEnrollment: { findMany: vi.fn() },
+    batch: { findMany: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => ({
+      ...user,
+      name: user.name ?? "Decrypted",
+    })),
+  };
+
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      usersPresenter as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
+    );
+    prisma.subscription.findMany.mockResolvedValue([]);
+    prisma.batchEnrollment.findMany.mockResolvedValue([]);
+    prisma.batch.findMany.mockResolvedValue([]);
+  });
+
+  it("returns studio invoices with decrypted students", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studioId: "studio-1",
+        studentId: "student-1",
+        amount: 1500,
+        student: { id: "student-1", nameEnc: "x" },
+        membership: { id: "mem-1", subscription: { kind: "INDIVIDUAL" } },
+        purchaseMeta: null,
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
+      },
+    ]);
+
+    const rows = await service.listByStudio("studio-1");
+
+    expect(prisma.invoice.findMany).toHaveBeenCalledWith({
+      where: { studioId: "studio-1" },
+      include: {
+        student: true,
+        membership: { include: { subscription: true } },
+      },
+      orderBy: { id: "desc" },
+    });
+    expect(usersPresenter.presentLiteMany).toHaveBeenCalled();
+    expect(rows[0]?.student.name).toBe("Decrypted");
+    expect(rows[0]?.kind).toBe("INDIVIDUAL");
+    expect(rows[0]?.batchName).toBeNull();
+    expect(rows[0]?.billPeriodLabel).toBe("Aug 2026");
+    expect(rows[0]?.billMonthKeys).toEqual(["2026-08"]);
+  });
+
+  it("marks family checkout invoices via purchaseMeta", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-fam",
+        studioId: "studio-1",
+        studentId: "parent-1",
+        amount: 5000,
+        student: { id: "parent-1", nameEnc: "x" },
+        membership: null,
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
+        purchaseMeta: {
+          subscriptionId: "sub-fam",
+          purchaserUserId: "parent-1",
+          coveredStudents: [
+            { studentId: "adult-1", seatRole: "ADULT", batchId: "b1" },
+            { studentId: "kid-1", seatRole: "KID", batchId: "b2" },
+          ],
+        },
+      },
+    ]);
+    prisma.subscription.findMany.mockResolvedValue([
+      { id: "sub-fam", kind: "FAMILY", name: "Family Duo" },
+    ]);
+    prisma.batch.findMany.mockResolvedValue([
+      { id: "b1", name: "Adult Hip-Hop" },
+      { id: "b2", name: "Kids Ballet" },
+    ]);
+
+    const rows = await service.listByStudio("studio-1");
+    expect(rows[0]?.kind).toBe("FAMILY");
+    expect(rows[0]?.familySummary?.planName).toBe("Family Duo");
+    expect(rows[0]?.familySummary?.adultCount).toBe(1);
+    expect(rows[0]?.familySummary?.kidCount).toBe(1);
+    expect(rows[0]?.batchName).toBe("Adult Hip-Hop · Kids Ballet");
+  });
+
+  it("attaches batchName from purchaseMeta.batchId", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        id: "inv-1",
+        studioId: "studio-1",
+        studentId: "student-1",
+        amount: 1500,
+        student: { id: "student-1", nameEnc: "x" },
+        membership: null,
+        periodStart: new Date(Date.UTC(2026, 7, 1)),
+        periodEnd: new Date(Date.UTC(2026, 7, 31, 23, 59, 59, 999)),
+        purchaseMeta: {
+          batchId: "batch-1",
+          subscriptionId: "sub-1",
+          purchaserUserId: "student-1",
+          coveredStudents: [
+            { studentId: "student-1", seatRole: "ADULT", batchId: "batch-1" },
+          ],
+        },
+      },
+    ]);
+    prisma.subscription.findMany.mockResolvedValue([
+      { id: "sub-1", kind: "INDIVIDUAL", name: "Adult Monthly" },
+    ]);
+    prisma.batch.findMany.mockResolvedValue([
+      { id: "batch-1", name: "Beginner Hip-Hop" },
+    ]);
+
+    const rows = await service.listByStudio("studio-1");
+    expect(rows[0]?.batchId).toBe("batch-1");
+    expect(rows[0]?.batchName).toBe("Beginner Hip-Hop");
+  });
+});
+
+describe("BillingService invoice checkout", () => {
+  const purchaseMeta = {
+    batchId: "batch-1",
+    subscriptionId: "sub-1",
+    purchaserUserId: "student-1",
+    coveredStudents: [
+      { studentId: "student-1", seatRole: "ADULT", batchId: "batch-1" },
+    ],
+  };
+
+  const prisma = {
+    invoice: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    user: { findUnique: vi.fn() },
+    batch: { findUnique: vi.fn() },
+    familyMember: { findUnique: vi.fn() },
+    parentChild: { findUnique: vi.fn() },
+  };
+  const crypto = {
+    decryptUser: vi.fn((user: { name?: string }) => user),
+  };
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    razorpayStub.isEnabled.mockReturnValue(false);
+    razorpayStub.verifyPaymentSignature.mockReturnValue(false);
+    prisma.user.findUnique.mockResolvedValue({
+      id: "student-1",
+      studioId: "studio-1",
+    });
+    membershipsStub.assign.mockResolvedValue({
+      id: "mem-1",
+      coveredStudents: [],
+    });
+    service = new BillingService(
+      prisma as never,
+      crypto as never,
+      usersPresenter as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+      { append: vi.fn().mockResolvedValue({}) } as never,
+    );
+  });
+
+  it("returns demo mode when Razorpay is not configured", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      amount: 3500,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      purchaseMeta,
+      razorpayOrderId: null,
+      studio: { settings: null },
+    });
+
+    await expect(
+      service.createInvoicePaymentOrder(
+        "inv-1",
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+      ),
+    ).resolves.toEqual({ mode: "demo" });
+  });
+
+  it("confirms demo payment and assigns membership", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      amount: 3500,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      purchaseMeta,
+      razorpayOrderId: null,
+      studio: { settings: null },
+    });
+    prisma.invoice.update.mockResolvedValue({
+      id: "inv-1",
+      status: InvoiceStatus.PAID,
+      paymentMethod: PaymentMethod.RAZORPAY,
+      amount: 3500,
+      membershipId: "mem-1",
+    });
+
+    const result = await service.confirmInvoicePayment(
+      "inv-1",
+      makeUser({ id: "student-1", role: UserRole.STUDENT }),
+    );
+
+    expect(membershipsStub.assign).toHaveBeenCalledWith({
+      subscriptionId: "sub-1",
+      purchaserUserId: "student-1",
+      coveredStudents: purchaseMeta.coveredStudents,
+    });
+    expect(prisma.invoice.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: InvoiceStatus.PAID,
+          paymentMethod: PaymentMethod.RAZORPAY,
+          membershipId: "mem-1",
+        }),
+      }),
+    );
+    const updateData = prisma.invoice.update.mock.calls[0]?.[0]?.data as {
+      purchaseMeta?: unknown;
+    };
+    expect(updateData.purchaseMeta).toBeUndefined();
+    expect(result.status).toBe(InvoiceStatus.PAID);
+  });
+
+  it("rejects confirm when Razorpay is enabled and signature is missing", async () => {
+    razorpayStub.isEnabled.mockReturnValue(true);
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      amount: 3500,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      purchaseMeta,
+      razorpayOrderId: "order_1",
+      studio: {
+        settings: {
+          razorpayKeyId: "rzp_test",
+          razorpayKeySecret: "cipher",
+          razorpaySecretIv: "iv",
+        },
+      },
+    });
+
+    await expect(
+      service.confirmInvoicePayment(
+        "inv-1",
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+      ),
+    ).rejects.toThrow(/Razorpay payment details are required/);
+  });
+
+  it("creates a Razorpay order for the plan amount in paise", async () => {
+    razorpayStub.isEnabled.mockReturnValue(true);
+    razorpayStub.keyId.mockReturnValue("rzp_test");
+    razorpayStub.createOrder.mockResolvedValue({
+      orderId: "order_new",
+      amount: 350_000,
+      currency: "INR",
+    });
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      amount: 3500,
+      paymentHoldExpiresAt: new Date(Date.now() + 60_000),
+      purchaseMeta,
+      razorpayOrderId: null,
+      studio: {
+        settings: {
+          razorpayKeyId: "rzp_test",
+          razorpayKeySecret: "cipher",
+          razorpaySecretIv: "iv",
+        },
+      },
+    });
+    prisma.invoice.update.mockResolvedValue({});
+
+    await expect(
+      service.createInvoicePaymentOrder(
+        "inv-1",
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+      ),
+    ).resolves.toEqual({
+      mode: "razorpay",
+      keyId: "rzp_test",
+      orderId: "order_new",
+      amount: 350_000,
+      currency: "INR",
+    });
+
+    expect(razorpayStub.createOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        receipt: "inv-1",
+        amountPaise: 350_000,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("abandons a checkout invoice by deleting it", async () => {
+    prisma.invoice.findUnique.mockResolvedValue({
+      id: "inv-1",
+      studentId: "student-1",
+      status: InvoiceStatus.PENDING,
+      purchaseMeta,
+    });
+    prisma.invoice.delete.mockResolvedValue({});
+
+    await expect(
+      service.abandonInvoicePayment(
+        "inv-1",
+        makeUser({ id: "student-1", role: UserRole.STUDENT }),
+      ),
+    ).resolves.toEqual({ id: "inv-1", status: "CANCELLED" });
+    expect(prisma.invoice.delete).toHaveBeenCalledWith({
+      where: { id: "inv-1" },
+    });
+  });
+});
+
+describe("BillingService.familyCombine", () => {
+  const outboxStub = {
+    append: vi.fn().mockResolvedValue({}),
+  };
+  const prisma = {
+    invoice: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    batchEnrollment: { findMany: vi.fn() },
+    studioSettings: { findUnique: vi.fn() },
+    familyMember: { findMany: vi.fn(), findUnique: vi.fn() },
+    parentChild: { findMany: vi.fn(), findUnique: vi.fn() },
+    $transaction: vi.fn(),
+  };
+  let service: BillingService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new BillingService(
+      prisma as never,
+      { decryptUser: vi.fn() } as never,
+      usersPresenter as never,
+      membershipsStub as never,
+      razorpayStub as never,
+      notificationsStub as never,
+      emailStub as never,
+      outboxStub as never,
+    );
+    prisma.$transaction.mockImplementation(
+      async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
+    prisma.studioSettings.findUnique.mockResolvedValue({
+      platformFeePercent: 5,
+    });
+    prisma.batchEnrollment.findMany.mockResolvedValue([
+      { studentId: "kid-1", batchId: "batch-kid" },
+      { studentId: "kid-2", batchId: "batch-kid" },
+    ]);
+    prisma.familyMember.findMany.mockResolvedValue([
+      { memberUserId: "kid-1" },
+      { memberUserId: "kid-2" },
+    ]);
+    prisma.parentChild.findMany.mockResolvedValue([]);
+    prisma.invoice.create.mockResolvedValue({
+      id: "inv-combined",
+      studentId: "owner-1",
+      studioId: "studio-1",
+      amount: 1900,
+      familyDiscount: 100,
+      referralDiscount: 0,
+      studioDiscount: 0,
+      status: InvoiceStatus.PENDING,
+      combineMeta: null,
+    });
+    prisma.invoice.deleteMany.mockResolvedValue({ count: 2 });
+  });
+
+  function unpaidSources() {
+    return [
+      {
+        id: "inv-a",
+        studentId: "kid-1",
+        studioId: "studio-1",
+        amount: 1000,
+        status: InvoiceStatus.PENDING,
+        chargeType: "PREPAID_FULL",
+        membershipId: "mem-a",
+        purchaseMeta: null,
+        combineMeta: null,
+        razorpayPaymentLinkId: null,
+        membership: null,
+        studio: { settings: null },
+        periodStart: new Date(Date.UTC(2026, 5, 1)),
+        periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
+      },
+      {
+        id: "inv-b",
+        studentId: "kid-2",
+        studioId: "studio-1",
+        amount: 1000,
+        status: InvoiceStatus.PENDING,
+        chargeType: "PREPAID_FULL",
+        membershipId: "mem-b",
+        purchaseMeta: null,
+        combineMeta: null,
+        razorpayPaymentLinkId: null,
+        membership: null,
+        studio: { settings: null },
+        periodStart: new Date(Date.UTC(2026, 5, 1)),
+        periodEnd: new Date(Date.UTC(2026, 5, 30, 23, 59, 59, 999)),
+      },
+    ];
+  }
+
+  it("creates a combined invoice with combineMeta and deletes sources", async () => {
+    prisma.invoice.findMany.mockResolvedValue(unpaidSources());
+
+    const result = await service.familyCombine(makeUser(), {
+      studioId: "studio-1",
+      purchaserUserId: "owner-1",
+      invoiceIds: ["inv-a", "inv-b"],
+      familyDiscount: 100,
+    });
+
+    expect(result.kind).toBe("COMBINED");
+    expect(result.familyDiscount).toBe(100);
+    expect(result.amount).toBe(1900);
+    expect(result.combineMeta?.sources).toHaveLength(2);
+    expect(result.combineMeta?.sources[0]).toMatchObject({
+      invoiceId: "inv-a",
+      studentId: "kid-1",
+      batchId: "batch-kid",
+      originalAmount: 1000,
+      allocatedDiscount: 50,
+      netAmount: 950,
+    });
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: "owner-1",
+        amount: 1900,
+        familyDiscount: 100,
+        status: InvoiceStatus.PENDING,
+        periodStart: expect.any(Date),
+        periodEnd: expect.any(Date),
+        combineMeta: expect.objectContaining({
+          sources: expect.any(Array),
+        }),
+      }),
+    });
+    expect(prisma.invoice.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["inv-a", "inv-b"] }, studioId: "studio-1" },
+    });
+    expect(outboxStub.append).toHaveBeenCalledWith(
+      prisma,
+      "invoice.created",
+      expect.objectContaining({
+        invoiceId: "inv-combined",
+        studioId: "studio-1",
+        studentId: "owner-1",
+      }),
+      { studioId: "studio-1" },
+    );
+  });
+
+  it("rejects combining admission invoices", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      unpaidSources()[0],
+      {
+        ...unpaidSources()[1],
+        chargeType: "ADMISSION",
+      },
+    ]);
+
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a", "inv-b"],
+        familyDiscount: 0,
+      }),
+    ).rejects.toThrow(/prepaid membership/i);
+  });
+
+  it("cancels Razorpay links on sources before deleting them", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      {
+        ...unpaidSources()[0],
+        razorpayPaymentLinkId: "plink_a",
+        studio: {
+          settings: {
+            razorpayKeyId: "rzp_test",
+            razorpayKeySecret: "enc",
+            razorpaySecretIv: "iv",
+          },
+        },
+      },
+      unpaidSources()[1],
+    ]);
+
+    await service.familyCombine(makeUser(), {
+      studioId: "studio-1",
+      purchaserUserId: "owner-1",
+      invoiceIds: ["inv-a", "inv-b"],
+      familyDiscount: 0,
+    });
+
+    expect(razorpayStub.cancelPaymentLink).toHaveBeenCalledWith(
+      "plink_a",
+      expect.objectContaining({ razorpayKeyId: "rzp_test" }),
+    );
+  });
+
+  it("rejects family discount above the selected total", async () => {
+    prisma.invoice.findMany.mockResolvedValue(unpaidSources());
+
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a", "inv-b"],
+        familyDiscount: 5000,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects invoices outside the family", async () => {
+    prisma.invoice.findMany.mockResolvedValue(unpaidSources());
+    prisma.familyMember.findMany.mockResolvedValue([]);
+    prisma.parentChild.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a", "inv-b"],
+        familyDiscount: 0,
+      }),
+    ).rejects.toThrow(/family/i);
+  });
+
+  it("rejects combining two invoices for the same person", async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      unpaidSources()[0],
+      {
+        ...unpaidSources()[0],
+        id: "inv-a2",
+      },
+    ]);
+
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a", "inv-a2"],
+        familyDiscount: 0,
+      }),
+    ).rejects.toThrow(/more than one family member/i);
+    expect(prisma.familyMember.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects fewer than two invoices", async () => {
+    await expect(
+      service.familyCombine(makeUser(), {
+        studioId: "studio-1",
+        purchaserUserId: "owner-1",
+        invoiceIds: ["inv-a"],
+        familyDiscount: 0,
+      }),
+    ).rejects.toThrow(/at least two/i);
+  });
+});

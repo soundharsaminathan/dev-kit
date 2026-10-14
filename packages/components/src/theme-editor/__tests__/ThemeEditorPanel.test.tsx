@@ -45,4 +45,47 @@ describe("ThemeEditorPanel", () => {
 
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("updates radius and font stacks, including clearing fonts", () => {
+    const onChange = vi.fn();
+    render(
+      <ThemeEditorPanel
+        value={createThemeDraft({
+          label: "Acme",
+          fonts: { sans: "Inter, sans-serif" },
+        })}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Radius factor"), {
+      target: { value: "1.5" },
+    });
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ radiusFactor: 1.5 }),
+    );
+
+    onChange.mockClear();
+    fireEvent.change(screen.getByLabelText("mono font"), {
+      target: { value: "JetBrains Mono" },
+    });
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fonts: expect.objectContaining({
+          sans: "Inter, sans-serif",
+          mono: "JetBrains Mono",
+        }),
+      }),
+    );
+
+    onChange.mockClear();
+    fireEvent.change(screen.getByLabelText("sans font"), {
+      target: { value: "   " },
+    });
+    // Only sans was set on the rendered value; clearing it removes fonts entirely.
+    const cleared = onChange.mock.calls.at(-1)?.[0] as {
+      fonts?: Record<string, string>;
+    };
+    expect(cleared.fonts).toBeUndefined();
+  });
 });

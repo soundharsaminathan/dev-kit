@@ -86,4 +86,17 @@ describe("ToggleButton", () => {
     expect(button).toHaveAttribute("data-size", "lg");
     expect(button).toHaveAttribute("data-icon-only", "true");
   });
+
+  it("applies the segmented variant", () => {
+    render(
+      <ToggleButton aria-label="Monthly" variant="segmented" defaultSelected>
+        Monthly
+      </ToggleButton>,
+    );
+
+    expect(screen.getByRole("button", { name: "Monthly" })).toHaveAttribute(
+      "data-variant",
+      "segmented",
+    );
+  });
 });

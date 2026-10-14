@@ -1,0 +1,356 @@
+name: classa Deploy
+
+on:
+  push:
+    branches: [step-up]
+    paths:
+      - "apps/step-up/**"
+      - "apps/step-up-api/**"
+      - "apps/portfolio/**"
+      - "packages/components/**"
+      - "packages/tokens/**"
+      - "packages/core/**"
+      - "packages/icons/**"
+      - "packages/icons-packs/**"
+      - ".github/workflows/step-up-deploy.yml"
+  # Also deploy when a PR into step-up is merged (covers missed push
+  # events during Actions outages / racey merges).
+  pull_request:
+    types: [closed]
+    branches: [step-up]
+    paths:
+      - "apps/step-up/**"
+      - "apps/step-up-api/**"
+      - "apps/portfolio/**"
+      - "packages/components/**"
+      - "packages/tokens/**"
+      - "packages/core/**"
+      - "packages/icons/**"
+      - "packages/icons-packs/**"
+      - ".github/workflows/step-up-deploy.yml"
+  workflow_dispatch:
+
+# Deploy: Cloudflare Pages (web) + Cloud Run API (Memorystore via Direct VPC).
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+
+jobs:
+  prepare:
+    name: Resolve deploy target
+    runs-on: ubuntu-latest
+    # Only the step-up branch deploys. Skip closed-but-unmerged PRs.
+    if: >-
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'step-up'
+      ) || (
+        github.event_name != 'pull_request' &&
+        github.ref_name == 'step-up'
+      )
+    outputs:
+      target: ${{ steps.meta.outputs.target }}
+      sha: ${{ steps.meta.outputs.sha }}
+      should_deploy: ${{ steps.meta.outputs.should_deploy }}
+      should_smoke: ${{ steps.meta.outputs.should_smoke }}
+    steps:
+      - id: meta
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TARGET="${{ github.event.pull_request.base.ref }}"
+            SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          else
+            TARGET="${{ github.ref_name }}"
+            SHA="${{ github.sha }}"
+          fi
+          if [ -z "$SHA" ]; then
+            echo "Missing deploy SHA for event ${{ github.event_name }}" >&2
+            exit 1
+          fi
+          {
+            echo "target=$TARGET"
+            echo "sha=$SHA"
+            if [ "$TARGET" = "step-up" ]; then
+              echo "should_deploy=true"
+            else
+              echo "should_deploy=false"
+            fi
+            if [ "$TARGET" = "step-up" ]; then
+              echo "should_smoke=true"
+            else
+              echo "should_smoke=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
+          echo "Deploy target=$TARGET sha=$SHA"
+
+  test-api:
+    name: classa API tests
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Generate Prisma client
+        run: pnpm --filter @step-up/api prisma:generate
+      - name: Test API
+        run: pnpm exec nx run step-up-api:test
+      - name: Typecheck API
+        run: pnpm exec nx run step-up-api:typecheck
+
+  test-web:
+    name: classa web typecheck
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Typecheck web
+        run: pnpm exec nx run step-up:typecheck
+      - name: Test web
+        run: pnpm exec nx run step-up:test
+
+  deploy-web:
+    name: Deploy Cloudflare Pages
+    needs: [prepare, test-web, test-api]
+    runs-on: ubuntu-latest
+    # Explicit result checks: a job-level `if` replaces the default
+    # success() gate, so failed needs would otherwise still deploy.
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.should_deploy == 'true' &&
+      needs.test-web.result == 'success' &&
+      needs.test-api.result == 'success'
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Build classa web
+        run: pnpm exec nx run step-up:build --skip-nx-cache
+        env:
+          VITE_API_URL: ${{ vars.STEP_UP_API_URL }}
+          VITE_AUTH_BYPASS: "false"
+          VITE_FIREBASE_API_KEY: ${{ secrets.STEP_UP_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.STEP_UP_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.STEP_UP_FIREBASE_APP_ID }}
+          VITE_SENTRY_DSN: ${{ secrets.STEP_UP_SENTRY_DSN_WEB }}
+      - name: Build portfolio into /dev
+        run: |
+          pnpm exec nx run portfolio:build --skip-nx-cache
+          mkdir -p apps/step-up/dist/dev
+          cp -R apps/portfolio/dist/. apps/step-up/dist/dev/
+      - name: Publish to Cloudflare Pages
+        run: |
+          if ! npx --yes wrangler@4 pages project list 2>/dev/null | grep -qE '(^|[^a-zA-Z0-9_-])step-up([^a-zA-Z0-9_-]|$)'; then
+            npx --yes wrangler@4 pages project create step-up --production-branch=step-up
+          fi
+          # Checkout uses a detached SHA; without --branch wrangler aliases as
+          # "head" and only updates head.step-up.pages.dev — not production.
+          npx --yes wrangler@4 pages deploy apps/step-up/dist \
+            --project-name=step-up \
+            --branch=step-up
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  deploy-api:
+    name: Deploy Cloud Run
+    needs: [prepare, test-web, test-api]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: step-up-deploy-api-migrate
+      cancel-in-progress: false
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.should_deploy == 'true' &&
+      needs.test-web.result == 'success' &&
+      needs.test-api.result == 'success'
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+      - name: Build and push image
+        run: |
+          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/step-up/api:${{ needs.prepare.outputs.sha }}"
+          docker build -f apps/step-up-api/Dockerfile -t "$IMAGE" apps/step-up-api
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+      - name: Deploy to Cloud Run
+        run: |
+          set -euo pipefail
+          SECRETS="DATABASE_URL=STEP_UP_DATABASE_URL:latest,FIREBASE_PRIVATE_KEY=STEP_UP_FIREBASE_PRIVATE_KEY:latest,SESSION_QR_SECRET=STEP_UP_SESSION_QR_SECRET:latest,JOBS_SECRET=STEP_UP_JOBS_SECRET:latest,SENTRY_DSN=STEP_UP_SENTRY_DSN_API:latest,PII_MASTER_KEY=STEP_UP_PII_MASTER_KEY:latest,CHAT_MASTER_KEY=STEP_UP_CHAT_MASTER_KEY:latest,R2_ACCESS_KEY_ID=STEP_UP_R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=STEP_UP_R2_SECRET_ACCESS_KEY:latest,GEMINI_API_KEY=STEP_UP_GEMINI_API_KEY:latest,GROQ_API_KEY=STEP_UP_GROQ_API_KEY:latest"
+          ENV_COMMON="AUTH_BYPASS=false|FIREBASE_PROJECT_ID=${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }}|FIREBASE_CLIENT_EMAIL=${{ secrets.STEP_UP_FIREBASE_CLIENT_EMAIL }}|SENTRY_ENVIRONMENT=production|R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}|R2_BUCKET=${{ secrets.R2_BUCKET }}|R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}|REDIS_URL=${{ secrets.STEP_UP_REDIS_URL }}|GEMINI_CHAT_MODEL=${{ vars.GEMINI_CHAT_MODEL || 'gemini-3.6-flash' }}|GROQ_CHAT_MODEL=${{ vars.GROQ_CHAT_MODEL || 'openai/gpt-oss-120b' }}|SMTP_HOST=${{ vars.SMTP_HOST || 'smtpout.secureserver.net' }}|SMTP_PORT=${{ vars.SMTP_PORT || '465' }}|SMTP_USER=${{ vars.SMTP_USER || 'info@classa.in' }}|SMTP_PASS=${{ secrets.SMTP_PASS }}|EMAIL_FROM=${{ vars.EMAIL_FROM || 'classa <info@classa.in>' }}|APP_URL=${{ vars.APP_URL || 'https://step-up.pages.dev' }}|API_PUBLIC_URL=${{ vars.API_PUBLIC_URL || vars.STEP_UP_API_URL || 'https://step-up-api-2qwqkvvlza-el.a.run.app' }}|RAZORPAY_KEY_ID=${{ secrets.STEP_UP_RAZORPAY_KEY_ID }}|RAZORPAY_KEY_SECRET=${{ secrets.STEP_UP_RAZORPAY_KEY_SECRET }}|RAZORPAY_WEBHOOK_SECRET=${{ secrets.STEP_UP_RAZORPAY_WEBHOOK_SECRET }}|WHATSAPP_TOKEN=${{ secrets.STEP_UP_WHATSAPP_TOKEN }}|WHATSAPP_PHONE_NUMBER_ID=${{ secrets.STEP_UP_WHATSAPP_PHONE_NUMBER_ID }}|WHATSAPP_TEMPLATE_NAME=${{ vars.WHATSAPP_TEMPLATE_NAME || 'invoice_created' }}|WHATSAPP_TEMPLATE_LANGUAGE=${{ vars.WHATSAPP_TEMPLATE_LANGUAGE || 'en' }}|WHATSAPP_GRAPH_VERSION=${{ vars.WHATSAPP_GRAPH_VERSION || 'v21.0' }}"
+
+          gcloud run deploy step-up-api \
+            --image "$IMAGE" \
+            --region "${{ vars.GCP_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 3 \
+            --port 8080 \
+            --cpu-boost \
+            --network default \
+            --subnet default \
+            --vpc-egress private-ranges-only \
+            --set-secrets="$SECRETS" \
+            --set-env-vars="^|^OUTBOX_INLINE=true|${ENV_COMMON}"
+
+          # Same image, worker entry. Always-on CPU so BullMQ cron (06:00 UTC)
+          # can roll memberships / create next-month invoices.
+          gcloud run deploy step-up-worker \
+            --image "$IMAGE" \
+            --region "${{ vars.GCP_REGION }}" \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --min-instances 1 \
+            --max-instances 1 \
+            --cpu 1 \
+            --memory 1Gi \
+            --cpu-boost \
+            --no-cpu-throttling \
+            --port 8080 \
+            --command=node \
+            --args=dist/worker.main.js \
+            --network default \
+            --subnet default \
+            --vpc-egress private-ranges-only \
+            --set-secrets="$SECRETS" \
+            --set-env-vars="^|^${ENV_COMMON}"
+      - name: Prisma migrate deploy
+        run: |
+          pnpm --filter @step-up/api prisma:generate
+          pnpm --filter @step-up/api exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+
+  smoke:
+    name: Deployed smoke suite
+    needs: [prepare, deploy-web, deploy-api]
+    runs-on: ubuntu-latest
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.should_smoke == 'true' &&
+      needs.deploy-web.result == 'success' &&
+      needs.deploy-api.result == 'success'
+    timeout-minutes: 45
+    concurrency:
+      group: step-up-smoke
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: ./.github/actions/setup
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Load crypto keys from Secret Manager
+        id: crypto-keys
+        run: |
+          set -euo pipefail
+          PII_MASTER_KEY="$(gcloud secrets versions access latest --secret=STEP_UP_PII_MASTER_KEY --project="${{ vars.GCP_PROJECT_ID }}")"
+          CHAT_MASTER_KEY="$(gcloud secrets versions access latest --secret=STEP_UP_CHAT_MASTER_KEY --project="${{ vars.GCP_PROJECT_ID }}")"
+          {
+            echo "PII_MASTER_KEY<<EOF"
+            echo "$PII_MASTER_KEY"
+            echo "EOF"
+            echo "CHAT_MASTER_KEY<<EOF"
+            echo "$CHAT_MASTER_KEY"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Generate Prisma client
+        run: pnpm --filter @step-up/api prisma:generate
+
+      - name: Install Playwright Chromium
+        working-directory: apps/step-up
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Provision smoke Firebase users
+        run: pnpm --filter @step-up/api smoke:provision-users
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.STEP_UP_FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.STEP_UP_FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.STEP_UP_FIREBASE_PRIVATE_KEY }}
+          STEP_UP_SMOKE_PASSWORD: ${{ secrets.STEP_UP_SMOKE_PASSWORD }}
+
+      - name: Seed smoke studio
+        run: pnpm --filter @step-up/api prisma:seed:smoke
+        env:
+          DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
+
+      - name: Run deployed smoke suite
+        run: pnpm --filter @step-up/web test:smoke
+        env:
+          STEP_UP_WEB_URL: https://step-up.pages.dev
+          STEP_UP_API_URL: ${{ vars.STEP_UP_API_URL }}
+          STEP_UP_SMOKE_PASSWORD: ${{ secrets.STEP_UP_SMOKE_PASSWORD }}
+          STEP_UP_FIREBASE_API_KEY: ${{ secrets.STEP_UP_FIREBASE_API_KEY }}
+          CI: true
+
+      - name: Cleanup smoke data
+        if: always()
+        run: |
+          set -euo pipefail
+          attempts=3
+          for i in $(seq 1 "$attempts"); do
+            if pnpm --filter @step-up/api prisma:cleanup:smoke; then
+              exit 0
+            fi
+            if [ "$i" -eq "$attempts" ]; then
+              exit 1
+            fi
+            echo "Cleanup failed (attempt $i/$attempts); retrying in 15s…"
+            sleep 15
+          done
+        env:
+          DATABASE_URL: ${{ secrets.STEP_UP_DATABASE_URL }}
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step-up-smoke-report
+          path: |
+            apps/step-up/playwright-report-smoke
+            apps/step-up/test-results/junit-step-up-smoke.xml
+            apps/step-up/playwright-results/performance.json
+          if-no-files-found: ignore
+          retention-days: 14

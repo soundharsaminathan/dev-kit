@@ -1,0 +1,66 @@
+.showcase {
+  overflow: hidden;
+  background: var(--surface-background, #f8f4ec);
+}
+
+.intro {
+  max-width: 36rem;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.stack {
+  display: none;
+  position: relative;
+  height: clamp(22rem, 48vw, 34rem);
+  margin-inline: auto;
+  max-width: 52rem;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  width: min(72%, 28rem);
+  margin: auto;
+  transform: translateY(var(--shift, 0px))
+    translateX(calc((var(--i) - 3) * 7%))
+    rotate(calc((var(--i) - 3) * 1.4deg))
+    scale(calc(1 - var(--i) * 0.035));
+  z-index: calc(10 - var(--i));
+  transition: transform 0.15s linear;
+  filter: drop-shadow(0 16px 32px rgb(28 26 23 / 12%));
+}
+
+.carousel {
+  display: flex;
+  gap: var(--space-4, 1rem);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: var(--space-3, 0.75rem);
+  margin-inline: calc(var(--space-4, 1rem) * -1);
+  padding-inline: var(--space-4, 1rem);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.slide {
+  flex: 0 0 min(88%, 22rem);
+  scroll-snap-align: center;
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-width: 900px) {
+  .stack {
+    display: block;
+  }
+
+  .carousel {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    transition: none;
+  }
+}

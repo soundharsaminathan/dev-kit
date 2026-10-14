@@ -1,0 +1,266 @@
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { UserRole } from "../generated/prisma/client";
+import * as admin from "firebase-admin";
+import { MediaService } from "../media/media.service";
+import { PrismaService } from "../prisma/prisma.service";
+import {
+  type DecryptedUser,
+  UserCryptoService,
+} from "../users/user-crypto.service";
+import { resolveAuthBypassEnabled } from "./auth-bypass";
+import { toAppEmailActionUrl } from "./firebase-action-url";
+
+export interface VerifiedAuth {
+  firebaseUid: string;
+  email: string;
+  name?: string;
+  bypassUserId?: string;
+}
+
+@Injectable()
+export class FirebaseService {
+  private initialized = false;
+
+  constructor(
+    @Inject(ConfigService) private readonly config: ConfigService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(UserCryptoService) private readonly crypto: UserCryptoService,
+    @Inject(MediaService) private readonly media: MediaService,
+  ) {}
+
+  isBypassEnabled(): boolean {
+    const projectId = this.config.get<string>("FIREBASE_PROJECT_ID");
+    const clientEmail = this.config.get<string>("FIREBASE_CLIENT_EMAIL");
+    const privateKey = this.config.get<string>("FIREBASE_PRIVATE_KEY");
+    return resolveAuthBypassEnabled({
+      authBypass: this.config.get<string>("AUTH_BYPASS"),
+      nodeEnv: this.config.get<string>("NODE_ENV") ?? process.env.NODE_ENV,
+      e2e: process.env.STEP_UP_E2E,
+      firebaseConfigured: Boolean(projectId && clientEmail && privateKey),
+    });
+  }
+
+  private ensureFirebase() {
+    if (this.initialized || admin.apps.length > 0) {
+      this.initialized = true;
+      return;
+    }
+
+    const projectId = this.config.get<string>("FIREBASE_PROJECT_ID");
+    const clientEmail = this.config.get<string>("FIREBASE_CLIENT_EMAIL");
+    const privateKey = this.config
+      .get<string>("FIREBASE_PRIVATE_KEY")
+      ?.replace(/\\n/g, "\n");
+
+    if (projectId && clientEmail && privateKey) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        }),
+      });
+      this.initialized = true;
+    }
+  }
+
+  async verifyToken(token: string): Promise<VerifiedAuth> {
+    if (this.isBypassEnabled()) {
+      return this.verifyBypassToken(token);
+    }
+
+    this.ensureFirebase();
+
+    if (!admin.apps.length) {
+      throw new UnauthorizedException("Firebase is not configured");
+    }
+
+    const decoded = await admin.auth().verifyIdToken(token);
+    return {
+      firebaseUid: decoded.uid,
+      email: decoded.email ?? `${decoded.uid}@firebase.local`,
+      name: decoded.name,
+    };
+  }
+
+  private verifyBypassToken(token: string): VerifiedAuth {
+    const match = /^dev:([A-Z_]+):(.+)$/.exec(token);
+    if (!match) {
+      throw new UnauthorizedException("Invalid dev auth token");
+    }
+
+    const [, role, userId] = match;
+    if (!Object.values(UserRole).includes(role as UserRole)) {
+      throw new UnauthorizedException("Invalid dev auth role");
+    }
+
+    return {
+      firebaseUid: `dev-${userId}`,
+      email: `${userId}@stepup.dev`,
+      name: `Dev ${role}`,
+      bypassUserId: userId,
+    };
+  }
+
+  async resolveUser(auth: VerifiedAuth): Promise<DecryptedUser> {
+    if (auth.bypassUserId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: auth.bypassUserId },
+      });
+      if (!user) {
+        throw new UnauthorizedException("Bypass user not found");
+      }
+      if (!user.active) {
+        throw new UnauthorizedException("This account has been deactivated");
+      }
+      const decrypted = this.crypto.decryptUser(user);
+      return {
+        ...decrypted,
+        photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
+      };
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { firebaseUid: auth.firebaseUid },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        "User not found. Call POST /auth/sync first.",
+      );
+    }
+
+    if (!user.active) {
+      throw new UnauthorizedException("This account has been deactivated");
+    }
+
+    const decrypted = this.crypto.decryptUser(user);
+    return {
+      ...decrypted,
+      photoUrl: await this.media.signReadUrl(decrypted.photoUrl),
+    };
+  }
+
+  isAuthConfigured(): boolean {
+    this.ensureFirebase();
+    return admin.apps.length > 0;
+  }
+
+  /**
+   * Creates or updates a Firebase Auth email/password user.
+   * Returns null when Firebase Admin is not configured (e.g. local bypass-only).
+   */
+  async ensureEmailPasswordUser(input: {
+    email: string;
+    password: string;
+    displayName: string;
+  }): Promise<{ uid: string } | null> {
+    this.ensureFirebase();
+    if (!admin.apps.length) {
+      return null;
+    }
+
+    const email = input.email.trim().toLowerCase();
+    try {
+      const created = await admin.auth().createUser({
+        email,
+        password: input.password,
+        displayName: input.displayName,
+        emailVerified: true,
+      });
+      return { uid: created.uid };
+    } catch (error) {
+      const code =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof (error as { code: unknown }).code === "string"
+          ? (error as { code: string }).code
+          : null;
+      if (code !== "auth/email-already-exists") {
+        throw error;
+      }
+      const existing = await admin.auth().getUserByEmail(email);
+      await admin.auth().updateUser(existing.uid, {
+        password: input.password,
+        displayName: input.displayName,
+        emailVerified: true,
+      });
+      return { uid: existing.uid };
+    }
+  }
+
+  async generateVerifyAndChangeEmailLink(
+    currentEmail: string,
+    newEmail: string,
+  ): Promise<string> {
+    this.ensureFirebase();
+    if (!admin.apps.length) {
+      throw new BadRequestException("Firebase is not configured");
+    }
+
+    return this.toAppLink(
+      await admin
+        .auth()
+        .generateVerifyAndChangeEmailLink(
+          currentEmail.trim().toLowerCase(),
+          newEmail.trim().toLowerCase(),
+          this.actionCodeSettings(),
+        ),
+    );
+  }
+
+  async generateEmailVerificationLink(email: string): Promise<string> {
+    this.ensureFirebase();
+    if (!admin.apps.length) {
+      throw new BadRequestException("Firebase is not configured");
+    }
+    return this.toAppLink(
+      await admin
+        .auth()
+        .generateEmailVerificationLink(
+          email.trim().toLowerCase(),
+          this.actionCodeSettings(),
+        ),
+    );
+  }
+
+  async generatePasswordResetLink(email: string): Promise<string> {
+    this.ensureFirebase();
+    if (!admin.apps.length) {
+      throw new BadRequestException("Firebase is not configured");
+    }
+    return this.toAppLink(
+      await admin
+        .auth()
+        .generatePasswordResetLink(
+          email.trim().toLowerCase(),
+          this.actionCodeSettings(),
+        ),
+    );
+  }
+
+  private appUrl() {
+    return (
+      this.config.get<string>("APP_URL")?.trim().replace(/\/$/, "") ||
+      "https://step-up.pages.dev"
+    );
+  }
+
+  private toAppLink(firebaseLink: string) {
+    return toAppEmailActionUrl(firebaseLink, this.appUrl());
+  }
+
+  private actionCodeSettings() {
+    return {
+      url: `${this.appUrl()}/login`,
+      handleCodeInApp: false,
+    };
+  }
+}

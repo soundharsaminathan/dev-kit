@@ -1,0 +1,318 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "avatar stats"
+    "bio bio"
+    "actions actions";
+  column-gap: var(--space-4);
+  row-gap: var(--space-3);
+  align-items: center;
+  padding-inline: var(--space-6);
+}
+
+.aside {
+  display: contents;
+}
+
+.avatarWrap {
+  grid-area: avatar;
+  width: 5.5rem;
+  height: 5.5rem;
+  flex-shrink: 0;
+  justify-self: center;
+
+  :global([data-avatar]) {
+    width: 100%;
+    height: 100%;
+  }
+
+  :global([data-avatar-fallback]) {
+    font-size: 1.75rem;
+    font-weight: 600;
+  }
+}
+
+.titleRow {
+  display: none;
+}
+
+.username {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--color-fg);
+}
+
+.lock {
+  width: 1rem;
+  height: 1rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.lockMobile {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+.stats {
+  grid-area: stats;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  text-align: center;
+  min-width: 0;
+}
+
+.statValue {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-fg);
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-transform: lowercase;
+  color: color-mix(in srgb, var(--color-fg) 65%, transparent);
+}
+
+.bioBlock {
+  grid-area: bio;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.name {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.bio {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  color: var(--color-fg);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  max-width: 100%;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition:
+    color var(--interaction-transition-duration)
+      var(--interaction-transition-curve),
+    opacity var(--interaction-transition-duration)
+      var(--interaction-transition-curve);
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &:active {
+    transform: scale(var(--interaction-press-scale));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+.linkIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.styles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.actions {
+  grid-area: actions;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.actionPrimary,
+.actionSecondary {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.actions:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
+
+.actions:has(> :nth-child(3)) > :nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 380px) {
+  .avatarWrap {
+    width: 4.75rem;
+    height: 4.75rem;
+  }
+
+  .statValue {
+    font-size: 1rem;
+  }
+
+  .statLabel {
+    font-size: 0.6875rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .root {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: clamp(3rem, 8vw, 5.5rem);
+    padding-block: var(--space-6) var(--space-4);
+    padding-inline: var(--space-8);
+  }
+
+  .aside {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-5);
+    min-width: 0;
+    padding-top: var(--space-2);
+  }
+
+  .avatarWrap {
+    width: 9.5rem;
+    height: 9.5rem;
+    margin-inline: var(--space-6);
+
+    :global([data-avatar-fallback]) {
+      font-size: 2.75rem;
+    }
+  }
+
+  .titleRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 2.5rem;
+  }
+
+  .lockMobile {
+    display: none;
+  }
+
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-8);
+    width: auto;
+  }
+
+  .stat {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.35rem;
+    text-align: start;
+  }
+
+  .statValue {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .statLabel {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--color-fg);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: auto;
+    max-width: 28rem;
+    gap: var(--space-2);
+  }
+
+  .actionPrimary,
+  .actionSecondary {
+    width: auto;
+    min-width: 7.5rem;
+    flex: 1 1 0;
+    min-height: 2rem;
+  }
+
+  .actions:has(> :nth-child(3)) > :nth-child(3) {
+    flex: 1 1 100%;
+  }
+
+  .bioBlock {
+    gap: var(--space-1);
+  }
+
+  .bio {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+}
+
+@media (min-width: 1024px) {
+  .avatarWrap {
+    width: 10.5rem;
+    height: 10.5rem;
+  }
+}

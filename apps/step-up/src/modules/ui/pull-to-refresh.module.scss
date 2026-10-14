@@ -1,0 +1,47 @@
+.root {
+  position: relative;
+  min-height: 0;
+}
+
+.indicator {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  height: 0;
+  transition: height var(--motion-fast, 150ms) ease;
+}
+
+.indicator[data-active="true"] {
+  margin-bottom: var(--space-2, 0.5rem);
+}
+
+.spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-bottom: var(--space-2, 0.5rem);
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+  border-top-color: var(--color-primary);
+  opacity: 0.85;
+}
+
+.spinner[data-spin="true"] {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator {
+    transition-duration: 0ms;
+  }
+
+  .spinner[data-spin="true"] {
+    animation: none;
+  }
+}

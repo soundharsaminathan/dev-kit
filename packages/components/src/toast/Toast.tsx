@@ -1,6 +1,8 @@
 import { cn } from "@dev-ui/core";
+import { useCanHover } from "@dev-ui/hooks";
 import { Icon } from "@dev-ui/icons";
 import type { AriaButtonProps } from "@react-aria/button";
+import { useFocusWithin, useHover, useMove } from "@react-aria/interactions";
 import { OverlayContainer } from "@react-aria/overlays";
 import { useToast, useToastRegion } from "@react-aria/toast";
 import { mergeProps } from "@react-aria/utils";
@@ -11,16 +13,27 @@ import {
   useToastState,
 } from "@react-stately/toast";
 import type { DOMAttributes } from "@react-types/shared";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
+  type CSSProperties,
   createContext,
+  type HTMLAttributes,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { Button } from "../button/Button";
 import { Loader } from "../loader/Loader";
+import {
+  EASE_OUT,
+  SPRING_LAYOUT,
+  TOAST_ENTER,
+  TOAST_EXIT,
+} from "../motion/ease";
 import styles from "./toast.module.scss";
 import type {
   ToastCloseProps,
@@ -43,7 +56,16 @@ type ToastItemContextValue = {
   closeButtonProps: AriaButtonProps;
 };
 
+type ToastStackContextValue = {
+  isExpanded: boolean;
+  position: ToastPosition;
+};
+
 const ToastItemContext = createContext<ToastItemContextValue | null>(null);
+const ToastStackContext = createContext<ToastStackContextValue>({
+  isExpanded: false,
+  position: "top-right",
+});
 
 function useToastItemContext(component: string): ToastItemContextValue {
   const context = useContext(ToastItemContext);
@@ -66,19 +88,113 @@ function createToastQueue<T = ToastContentValue>(
   return new ToastQueue<T>(options);
 }
 
+const DEFAULT_TOAST_TIMEOUT = 3000;
+const DEFAULT_MAX_VISIBLE_TOASTS = 3;
+const SWIPE_DISMISS_THRESHOLD = 80;
+const TOAST_ENTER_OFFSET_PX = 20;
+const TOAST_STACK_OFFSET_PX = 8;
+const TOAST_STACK_SCALE_STEP = 0.02;
+const TOAST_EXIT_Z_INDEX = 60;
+const TOAST_HOVER_SCALE = 1.01;
+
+const VARIANT_ICON: Record<
+  Exclude<ToastVariant, "loading">,
+  "check-circle" | "x-circle" | "alert-triangle" | "info"
+> = {
+  success: "check-circle",
+  error: "x-circle",
+  warning: "alert-triangle",
+  info: "info",
+  neutral: "info",
+};
+
+function getEdgeOffsetY(position: ToastPosition): number {
+  return position.startsWith("bottom")
+    ? TOAST_ENTER_OFFSET_PX
+    : -TOAST_ENTER_OFFSET_PX;
+}
+
+function getStackOffsetY(position: ToastPosition, stackIndex: number): number {
+  const direction = position.startsWith("bottom") ? 1 : -1;
+  return stackIndex * TOAST_STACK_OFFSET_PX * direction;
+}
+
+function useToastSwipe({
+  enabled,
+  onDismiss,
+  panelRef,
+}: {
+  enabled: boolean;
+  onDismiss: () => void;
+  panelRef: RefObject<HTMLDivElement | null>;
+}): HTMLAttributes<HTMLDivElement> {
+  const deltaRef = useRef({ x: 0, y: 0 });
+
+  const { moveProps } = useMove({
+    onMoveStart() {
+      const panel = panelRef.current;
+      if (panel) {
+        panel.dataset.swiping = "true";
+      }
+    },
+    onMove({ deltaX, deltaY }) {
+      deltaRef.current = { x: deltaX, y: deltaY };
+      const panel = panelRef.current;
+      /* v8 ignore next -- swipe props only attach while the toast panel is mounted */
+      if (!panel) {
+        return;
+      }
+      const absX = Math.abs(deltaX);
+      const progress = Math.min(absX / SWIPE_DISMISS_THRESHOLD, 1);
+      panel.style.setProperty("--toast-swipe-x", `${deltaX}px`);
+      panel.style.setProperty("--toast-swipe-y", `${deltaY * 0.15}px`);
+      panel.style.setProperty("--toast-swipe-progress", String(progress));
+    },
+    onMoveEnd() {
+      const panel = panelRef.current;
+      /* v8 ignore next -- swipe props only attach while the toast panel is mounted */
+      if (!panel) {
+        return;
+      }
+      const { x } = deltaRef.current;
+      panel.style.removeProperty("--toast-swipe-x");
+      panel.style.removeProperty("--toast-swipe-y");
+      panel.style.removeProperty("--toast-swipe-progress");
+      delete panel.dataset.swiping;
+      deltaRef.current = { x: 0, y: 0 };
+
+      if (Math.abs(x) >= SWIPE_DISMISS_THRESHOLD) {
+        onDismiss();
+      }
+    },
+  });
+
+  return enabled ? moveProps : {};
+}
+
 function ToastProviderInner({
   children,
-  position = "bottom-right",
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
   state,
 }: {
   children: ReactNode;
   position: ToastPosition;
+  timeout?: number;
   state: ReturnType<typeof useToastState<ToastContentValue>>;
 }) {
   const toast = useCallback(
-    (content: ToastContentValue, options?: Parameters<typeof state.add>[1]) =>
-      state.add(content, options),
-    [state],
+    (content: ToastContentValue, options?: Parameters<typeof state.add>[1]) => {
+      const resolvedTimeout =
+        options?.timeout ??
+        (content.variant === "loading" ? undefined : timeout);
+
+      return state.add(content, {
+        ...options,
+        ...(resolvedTimeout !== undefined ? { timeout: resolvedTimeout } : {}),
+      });
+    },
+    [state, timeout],
   );
 
   const value = useMemo(
@@ -100,22 +216,24 @@ function ToastProviderInner({
 
 function ToastProviderWithState({
   children,
-  position = "bottom-right",
-  maxVisibleToasts,
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
+  maxVisibleToasts = DEFAULT_MAX_VISIBLE_TOASTS,
   wrapUpdate,
 }: {
   children: ReactNode;
   position?: ToastPosition;
+  timeout?: number;
   maxVisibleToasts?: number;
   wrapUpdate?: ToastStateProps["wrapUpdate"];
 }) {
   const state = useToastState<ToastContentValue>({
-    ...(maxVisibleToasts !== undefined ? { maxVisibleToasts } : {}),
+    maxVisibleToasts,
     ...(wrapUpdate !== undefined ? { wrapUpdate } : {}),
   });
 
   return (
-    <ToastProviderInner position={position} state={state}>
+    <ToastProviderInner position={position} timeout={timeout} state={state}>
       {children}
     </ToastProviderInner>
   );
@@ -123,13 +241,14 @@ function ToastProviderWithState({
 
 function ToastProviderWithQueue({
   children,
-  position = "bottom-right",
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
   queue,
 }: ToastProviderProps & { queue: ToastQueue<ToastContentValue> }) {
   const state = useToastQueue(queue);
 
   return (
-    <ToastProviderInner position={position} state={state}>
+    <ToastProviderInner position={position} timeout={timeout} state={state}>
       {children}
     </ToastProviderInner>
   );
@@ -138,13 +257,18 @@ function ToastProviderWithQueue({
 function ToastProvider({
   children,
   queue,
-  position = "bottom-right",
-  maxVisibleToasts,
+  position = "top-right",
+  timeout = DEFAULT_TOAST_TIMEOUT,
+  maxVisibleToasts = DEFAULT_MAX_VISIBLE_TOASTS,
   wrapUpdate,
 }: ToastProviderProps) {
   if (queue) {
     return (
-      <ToastProviderWithQueue queue={queue} position={position}>
+      <ToastProviderWithQueue
+        queue={queue}
+        position={position}
+        timeout={timeout}
+      >
         {children}
       </ToastProviderWithQueue>
     );
@@ -153,7 +277,8 @@ function ToastProvider({
   return (
     <ToastProviderWithState
       position={position}
-      {...(maxVisibleToasts !== undefined ? { maxVisibleToasts } : {})}
+      timeout={timeout}
+      maxVisibleToasts={maxVisibleToasts}
       {...(wrapUpdate !== undefined ? { wrapUpdate } : {})}
     >
       {children}
@@ -161,22 +286,36 @@ function ToastProvider({
   );
 }
 
+function ToastStatusIcon({ variant }: { variant: ToastVariant }) {
+  if (variant === "loading") {
+    return (
+      <div className={styles.icon} data-slot="toast-icon">
+        <Loader className={styles.spinner} aria-label="Loading" />
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.icon} data-slot="toast-icon" aria-hidden="true">
+      <Icon name={VARIANT_ICON[variant]} />
+    </div>
+  );
+}
+
 function DefaultToastItem({
   item,
+  stackIndex,
 }: {
   item: Parameters<typeof Toast>[0]["toast"];
+  stackIndex: number;
 }) {
   const variant = resolveVariant(undefined, item.content);
 
   return (
-    <Toast toast={item} variant={variant}>
+    <Toast toast={item} variant={variant} stackIndex={stackIndex}>
       <ToastContent>
         <div className={styles.body}>
-          {variant === "loading" ? (
-            <div className={styles.icon} data-slot="toast-icon">
-              <Loader className={styles.spinner} aria-label="Loading" />
-            </div>
-          ) : null}
+          <ToastStatusIcon variant={variant} />
           <div className={styles.message} data-slot="toast-message">
             <ToastTitle>{item.content.title}</ToastTitle>
             {item.content.description ? (
@@ -214,32 +353,134 @@ function ToastRegion({
     state,
     ref,
   );
+  const toastCount = state.visibleToasts.length;
+  const isStacked = toastCount > 1;
+  const [isRegionMounted, setIsRegionMounted] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [heldKeys, setHeldKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const prevKeysRef = useRef<string[]>([]);
+  const hoverRef = useRef(false);
+  const focusRef = useRef(false);
 
-  if (state.visibleToasts.length === 0) {
+  const syncExpanded = useCallback(() => {
+    setIsExpanded(hoverRef.current || focusRef.current);
+  }, []);
+
+  const { hoverProps: expandHoverProps } = useHover({
+    onHoverStart() {
+      hoverRef.current = true;
+      syncExpanded();
+    },
+    onHoverEnd() {
+      hoverRef.current = false;
+      syncExpanded();
+    },
+  });
+
+  const { focusWithinProps: expandFocusProps } = useFocusWithin({
+    onFocusWithinChange(isFocusWithin) {
+      focusRef.current = isFocusWithin;
+      syncExpanded();
+    },
+  });
+
+  const currentKeys = state.visibleToasts.map((item) => item.key);
+  const prevKeys = prevKeysRef.current;
+  const removedKeys = prevKeys.filter((key) => !currentKeys.includes(key));
+  const addedKeys = currentKeys.filter((key) => !prevKeys.includes(key));
+
+  if (
+    removedKeys.length > 0 &&
+    addedKeys.length > 0 &&
+    addedKeys.some((key) => !heldKeys.has(key))
+  ) {
+    setHeldKeys(new Set([...heldKeys, ...addedKeys]));
+  }
+
+  if (
+    prevKeys.length !== currentKeys.length ||
+    prevKeys.some((key, index) => key !== currentKeys[index])
+  ) {
+    prevKeysRef.current = currentKeys;
+  }
+
+  if (toastCount > 0 && !isRegionMounted) {
+    setIsRegionMounted(true);
+  }
+
+  const displayToasts = state.visibleToasts.filter(
+    (item) => !heldKeys.has(item.key),
+  );
+  const displayCount = displayToasts.length;
+  const displayStacked = displayCount > 1;
+
+  const stackContext = useMemo(
+    () => ({
+      isExpanded: displayStacked ? isExpanded : true,
+      position,
+    }),
+    [displayStacked, isExpanded, position],
+  );
+
+  if (!isRegionMounted) {
     return null;
   }
 
   return (
     <OverlayContainer>
-      <div
-        {...regionProps}
-        ref={ref}
-        data-toast-region=""
-        data-position={position}
-        className={cn(styles.region, className)}
-      >
-        {state.visibleToasts.map((item) => (
-          <DefaultToastItem key={item.key} item={item} />
-        ))}
-      </div>
+      <ToastStackContext.Provider value={stackContext}>
+        <div
+          {...mergeProps(regionProps, expandHoverProps, expandFocusProps)}
+          ref={ref}
+          data-toast-region=""
+          data-position={position}
+          data-count={displayCount}
+          {...(displayStacked ? { "data-stacked": "" } : {})}
+          {...(displayStacked && isExpanded ? { "data-expanded": "" } : {})}
+          className={cn(styles.region, className)}
+        >
+          <AnimatePresence
+            initial={false}
+            mode="popLayout"
+            onExitComplete={() => {
+              if (heldKeys.size > 0) {
+                setHeldKeys(new Set());
+              }
+              if (state.visibleToasts.length === 0) {
+                setIsRegionMounted(false);
+              }
+            }}
+          >
+            {displayToasts.map((item, index) => (
+              <DefaultToastItem key={item.key} item={item} stackIndex={index} />
+            ))}
+          </AnimatePresence>
+        </div>
+      </ToastStackContext.Provider>
     </OverlayContainer>
   );
 }
 
-function Toast({ toast, variant, className, children, ...props }: ToastProps) {
+function Toast({
+  toast,
+  variant,
+  className,
+  children,
+  stackIndex = 0,
+  style,
+  ...props
+}: ToastProps & {
+  stackIndex?: number;
+  style?: CSSProperties;
+}) {
   const { state } = useToastContext("Toast");
+  const { isExpanded, position } = useContext(ToastStackContext);
   const ref = useRef<HTMLDivElement>(null);
   const resolvedVariant = resolveVariant(variant, toast.content);
+  const reducedMotion = useReducedMotion();
+  const canHover = useCanHover();
   const {
     toastProps,
     contentProps,
@@ -247,6 +488,12 @@ function Toast({ toast, variant, className, children, ...props }: ToastProps) {
     descriptionProps,
     closeButtonProps,
   } = useToast({ toast, ...props }, state, ref);
+
+  const swipeProps = useToastSwipe({
+    enabled: !reducedMotion,
+    onDismiss: () => state.close(toast.key),
+    panelRef: ref,
+  });
 
   const itemContext = useMemo(
     () => ({
@@ -258,17 +505,77 @@ function Toast({ toast, variant, className, children, ...props }: ToastProps) {
     [closeButtonProps, contentProps, descriptionProps, titleProps],
   );
 
+  const edgeY = getEdgeOffsetY(position);
+  const collapsed = !isExpanded;
+  const stackY = collapsed ? getStackOffsetY(position, stackIndex) : 0;
+  const stackScale = collapsed ? 1 - stackIndex * TOAST_STACK_SCALE_STEP : 1;
+
   return (
     <ToastItemContext.Provider value={itemContext}>
-      <div
-        {...toastProps}
-        ref={ref}
-        data-toast=""
-        data-variant={resolvedVariant}
-        className={cn(styles.toast, className)}
+      <motion.div
+        className={styles.shell}
+        layout={!reducedMotion}
+        initial={
+          reducedMotion ? { opacity: 0 } : { opacity: 0, y: edgeY, scale: 0.96 }
+        }
+        animate={
+          reducedMotion
+            ? { opacity: 1 }
+            : { opacity: 1, y: stackY, scale: stackScale }
+        }
+        exit={
+          reducedMotion
+            ? { opacity: 0, transition: { duration: 0.12, ease: EASE_OUT } }
+            : {
+                opacity: 0,
+                y: edgeY,
+                scale: 0.96,
+                zIndex: TOAST_EXIT_Z_INDEX,
+                transition: TOAST_EXIT,
+              }
+        }
+        {...(!reducedMotion && canHover && (isExpanded || stackIndex === 0)
+          ? { whileHover: { scale: stackScale * TOAST_HOVER_SCALE } }
+          : {})}
+        transition={
+          reducedMotion
+            ? { duration: 0.15, ease: EASE_OUT }
+            : {
+                layout: SPRING_LAYOUT,
+                opacity: TOAST_ENTER,
+                y: TOAST_ENTER,
+                scale: TOAST_ENTER,
+                zIndex: { duration: 0 },
+              }
+        }
+        data-stack-index={String(stackIndex)}
+        style={{
+          ["--toast-stack-index" as string]: stackIndex,
+          zIndex: TOAST_EXIT_Z_INDEX - stackIndex,
+        }}
       >
-        {children}
-      </div>
+        <div
+          {...(mergeProps(
+            toastProps,
+            swipeProps,
+          ) as HTMLAttributes<HTMLDivElement>)}
+          ref={ref}
+          data-toast=""
+          data-variant={resolvedVariant}
+          data-stack-index={String(stackIndex)}
+          style={
+            style
+              ? {
+                  ...style,
+                  ["--toast-stack-index" as string]: stackIndex,
+                }
+              : { ["--toast-stack-index" as string]: stackIndex }
+          }
+          className={cn(styles.toast, className)}
+        >
+          {children}
+        </div>
+      </motion.div>
     </ToastItemContext.Provider>
   );
 }

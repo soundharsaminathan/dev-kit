@@ -72,14 +72,6 @@ export function CommandPalette() {
         },
       },
       {
-        id: "action:github",
-        label: "Open GitHub",
-        meta: "action",
-        run: () => {
-          window.open(profile.github, "_blank", "noreferrer");
-        },
-      },
-      {
         id: "action:explorer",
         label: "Focus on Explorer View",
         meta: "view",

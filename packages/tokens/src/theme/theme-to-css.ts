@@ -42,6 +42,7 @@ function themeTokenOverrideLines(
   mode: ThemeMode,
 ): string[] {
   const merged = mergeVocabularies(
+    theme.tokens.semantic,
     theme.tokens.effects,
     theme.tokens.interaction,
     theme.tokens.components,

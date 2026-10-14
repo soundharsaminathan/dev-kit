@@ -1,0 +1,218 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.modal {
+  max-width: min(64rem, calc(100vw - var(--space-6, 1.5rem)));
+  width: 100%;
+}
+
+.dialogContent {
+  min-width: 0;
+}
+
+.dialogBody {
+  padding-block-end: var(--space-3, 0.75rem);
+  overflow: auto;
+  max-height: min(88vh, 52rem);
+}
+
+.desktopBody {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(16rem, 1fr);
+  gap: var(--space-6, 1.5rem);
+  align-items: start;
+}
+
+.mobileShell {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg, #fff);
+  color: var(--color-fg, #111);
+}
+
+.mobileHeader {
+  display: grid;
+  grid-template-columns: 2.75rem 1fr 2.75rem;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-3, 0.75rem) var(--space-3, 0.75rem)
+    var(--space-2, 0.5rem);
+  border-bottom: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+}
+
+.mobileClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mobileTitle {
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-lg, 1.125rem);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.mobileHeaderSpacer {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.mobileBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
+  padding-bottom: calc(var(--space-4, 1rem) + env(safe-area-inset-bottom, 0px));
+  overflow: auto;
+}
+
+.previewPane {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.previewFrame {
+  position: relative;
+  width: min(100%, 20rem);
+  aspect-ratio: 9 / 16;
+  border-radius: var(--radius-xl, 1rem);
+  overflow: hidden;
+  background: #111;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.mobileBody .previewFrame {
+  width: min(100%, 16.5rem);
+}
+
+.previewCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.previewStatus {
+  position: absolute;
+  inset: auto 0 0;
+  padding: var(--space-3, 0.75rem);
+  text-align: center;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
+}
+
+.sidePane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  min-width: 0;
+}
+
+.controls,
+.controlsCompact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.controlBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.controlLabel {
+  margin: 0;
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-fg-muted, #666);
+}
+
+.layoutGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2, 0.5rem);
+}
+
+.layoutChip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  padding: var(--space-3, 0.75rem);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--color-bg-muted, rgba(0, 0, 0, 0.03));
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.layoutChip[data-selected="true"] {
+  border-color: var(--color-primary, #0a7c6e);
+  background: color-mix(
+    in srgb,
+    var(--color-primary, #0a7c6e) 12%,
+    transparent
+  );
+}
+
+.layoutChipTitle {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.layoutChipMeta {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-fg-muted, #666);
+}
+
+.fieldList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2, 0.5rem);
+  margin-top: auto;
+  padding-top: var(--space-2, 0.5rem);
+}
+
+@media (min-width: 40rem) {
+  .layoutGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobileBody .layoutGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 52rem) {
+  .desktopBody {
+    grid-template-columns: 1fr;
+  }
+}

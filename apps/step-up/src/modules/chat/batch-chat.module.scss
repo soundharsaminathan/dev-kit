@@ -1,0 +1,10 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.shell {
+  height: min(640px, calc(100vh - 16rem));
+  min-height: 360px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+  border-radius: var(--radius-lg, 0.75rem);
+  overflow: hidden;
+  background: var(--color-bg);
+}

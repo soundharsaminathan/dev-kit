@@ -92,6 +92,10 @@
 }
 
 .itemDescription {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 0.8125rem;
   color: var(--color-fg-muted);
 

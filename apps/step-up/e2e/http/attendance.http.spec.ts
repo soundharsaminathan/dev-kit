@@ -1,0 +1,278 @@
+import { expect, test } from "@playwright/test";
+import { canJoinPostpaidNow } from "../fixtures/billing-calendar";
+import { SEED } from "../fixtures/seed";
+import {
+  enrollPostpaid,
+  enrollUnpaidOnPostpaidBatch,
+  markableSessionId,
+  markPaid,
+} from "./billing-fixtures";
+import {
+  createHttpStudent,
+  expectOk,
+  expectStatus,
+  TestDataCleanup,
+} from "./helpers";
+
+test.describe("attendance HTTP @http", () => {
+  test("trainer marks attendance and reads roster @http", async () => {
+    const sessionId = SEED.sessionAttendanceId;
+    const studentId = SEED.users.STUDENT.id;
+
+    const marked = await expectOk<{ status: string }>(
+      "TRAINER",
+      "/attendance/mark",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId,
+          studentId,
+          status: "PRESENT",
+          source: "TRAINER",
+        }),
+      },
+    );
+    expect(marked.status).toBe("PRESENT");
+
+    const roster = await expectOk<
+      Array<{
+        studentId: string;
+        attendance?: { status: string } | null;
+      }>
+    >("TRAINER", `/attendance/session/${sessionId}/roster`);
+
+    expect(roster.length).toBeGreaterThan(0);
+    expect(
+      roster.find((row) => row.studentId === studentId)?.attendance?.status,
+    ).toBe("PRESENT");
+  });
+
+  test("roster flags staff-enrolled unpaid student and mark still works @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
+    const cleanup = new TestDataCleanup();
+    try {
+      const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
+        cleanup,
+        { studentName: "HTTP Unpaid Roster" },
+      );
+      expect(invoice.status).toBe("PENDING");
+
+      const roster = await expectOk<
+        Array<{
+          studentId: string;
+          monthlyUnpaid?: boolean;
+          attendance?: { status: string } | null;
+        }>
+      >("TRAINER", `/attendance/session/${sessionId}/roster`);
+
+      const entry = roster.find((row) => row.studentId === student.id);
+      expect(entry).toBeTruthy();
+      expect(entry?.monthlyUnpaid).toBe(true);
+
+      const marked = await expectOk<{ status: string }>(
+        "TRAINER",
+        "/attendance/mark",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            sessionId,
+            studentId: student.id,
+            status: "PRESENT",
+            source: "TRAINER",
+          }),
+        },
+      );
+      expect(marked.status).toBe("PRESENT");
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("mid-month enroll is monthlyUnpaid when remaining-sessions invoice exists @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
+    const cleanup = new TestDataCleanup();
+    try {
+      const enrolled = await enrollPostpaid(cleanup, {
+        studentName: "HTTP Postpaid Roster",
+      });
+      expect(enrolled.invoice).toBeTruthy();
+      const sessionId = markableSessionId(enrolled.sessions);
+
+      const roster = await expectOk<
+        Array<{ studentId: string; monthlyUnpaid?: boolean }>
+      >("TRAINER", `/attendance/session/${sessionId}/roster`);
+      expect(
+        roster.find((row) => row.studentId === enrolled.student.id)
+          ?.monthlyUnpaid,
+      ).toBe(true);
+
+      const marked = await expectOk<{ status: string }>(
+        "TRAINER",
+        "/attendance/mark",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            sessionId,
+            studentId: enrolled.student.id,
+            status: "PRESENT",
+            source: "TRAINER",
+          }),
+        },
+      );
+      expect(marked.status).toBe("PRESENT");
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("mark-paid clears monthlyUnpaid on attendance roster @http", async () => {
+    test.skip(!canJoinPostpaidNow(), "UTC 1st is always prepaid-at-join");
+    const cleanup = new TestDataCleanup();
+    try {
+      const { student, invoice, sessionId } = await enrollUnpaidOnPostpaidBatch(
+        cleanup,
+        { studentName: "HTTP After Pay Roster" },
+      );
+      expect(invoice.status).toBe("PENDING");
+
+      const unpaidRoster = await expectOk<
+        Array<{ studentId: string; monthlyUnpaid?: boolean }>
+      >("TRAINER", `/attendance/session/${sessionId}/roster`);
+      expect(
+        unpaidRoster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
+      ).toBe(true);
+
+      await markPaid(invoice.id);
+
+      const paidRoster = await expectOk<
+        Array<{ studentId: string; monthlyUnpaid?: boolean }>
+      >("TRAINER", `/attendance/session/${sessionId}/roster`);
+      expect(
+        paidRoster.find((row) => row.studentId === student.id)?.monthlyUnpaid,
+      ).toBe(false);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("trainer cannot mark a student who is not enrolled @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const student = await createHttpStudent("HTTP Not Enrolled", cleanup);
+      const result = await expectStatus("TRAINER", "/attendance/mark", 400, {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: SEED.sessionAttendanceId,
+          studentId: student.id,
+          status: "PRESENT",
+          source: "TRAINER",
+        }),
+      });
+      expect(result.text).toMatch(/not enrolled or booked/i);
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+
+  test("trainer mark-all-present succeeds @http", async () => {
+    const sessionId = SEED.sessionAttendanceId;
+    const result = await expectOk<{ marked: number; failed: number }>(
+      "TRAINER",
+      `/attendance/session/${sessionId}/mark-all-present`,
+      { method: "POST" },
+    );
+    expect(result.failed).toBe(0);
+  });
+
+  test("student cannot mark attendance @http", async () => {
+    await expectStatus("STUDENT", "/attendance/mark", 403, {
+      method: "POST",
+      body: JSON.stringify({
+        sessionId: SEED.sessionAttendanceId,
+        studentId: SEED.users.STUDENT.id,
+        status: "PRESENT",
+        source: "TRAINER",
+      }),
+    });
+  });
+
+  test("batch monthly attendance summary stays after unenroll; student denied @http", async () => {
+    const cleanup = new TestDataCleanup();
+    try {
+      const now = new Date();
+      const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+      const student = await createHttpStudent(
+        "HTTP Month Attendance",
+        cleanup,
+        {
+          ageRange: "UNDER_10",
+        },
+      );
+
+      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/enroll`, {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: student.id,
+          subscriptionId: SEED.kidPlanIds[0],
+        }),
+      });
+
+      await expectOk<{ status: string }>("TRAINER", "/attendance/mark", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: SEED.sessionAttendanceId,
+          studentId: student.id,
+          status: "PRESENT",
+          source: "TRAINER",
+        }),
+      });
+
+      type Summary = {
+        month: string;
+        sessionCount: number;
+        students: Array<{
+          studentId: string;
+          presentCount: number;
+          eligibleCount: number;
+        }>;
+      };
+
+      const summary = await expectOk<Summary>(
+        "TRAINER",
+        `/batches/${SEED.kidsBatchId}/attendance?month=${month}`,
+      );
+      expect(summary.month).toBe(month);
+      expect(summary.sessionCount).toBeGreaterThan(0);
+
+      const row = summary.students.find(
+        (entry) => entry.studentId === student.id,
+      );
+      expect(row).toBeTruthy();
+      expect(row!.eligibleCount).toBeGreaterThan(0);
+      expect(row!.presentCount).toBeGreaterThanOrEqual(1);
+
+      await expectOk("STAFF", `/batches/${SEED.kidsBatchId}/unenroll`, {
+        method: "POST",
+        body: JSON.stringify({ studentId: student.id }),
+      });
+
+      const afterUnenroll = await expectOk<Summary>(
+        "STAFF",
+        `/batches/${SEED.kidsBatchId}/attendance?month=${month}`,
+      );
+      expect(
+        afterUnenroll.students.find((entry) => entry.studentId === student.id),
+      ).toBeTruthy();
+
+      await expectStatus(
+        "STUDENT",
+        `/batches/${SEED.kidsBatchId}/attendance?month=${month}`,
+        403,
+        undefined,
+        { userId: student.id },
+      );
+    } finally {
+      await cleanup.dispose();
+    }
+  });
+});

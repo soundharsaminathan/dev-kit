@@ -1,7 +1,7 @@
 import type { AriaToggleButtonProps } from "@react-aria/button";
 import type { ReactNode, Ref } from "react";
 
-export type ToggleButtonVariant = "default" | "primary" | "quiet";
+export type ToggleButtonVariant = "default" | "primary" | "quiet" | "segmented";
 export type ToggleButtonSize = "xs" | "sm" | "md" | "lg";
 
 export type ToggleButtonProps = AriaToggleButtonProps & {

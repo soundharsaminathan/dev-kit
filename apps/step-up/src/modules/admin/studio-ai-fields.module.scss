@@ -1,0 +1,52 @@
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  min-width: 0;
+}
+
+.secret {
+  -webkit-text-security: disc;
+  text-security: disc;
+}
+
+.selectField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  min-width: 0;
+}
+
+.selectLabel {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 16%, transparent);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--color-bg, #fff);
+  color: var(--color-fg);
+  font: inherit;
+}
+
+.removeBtn {
+  align-self: flex-start;
+  margin-top: var(--space-1, 0.25rem);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg) 70%, transparent);
+  font: inherit;
+  font-size: var(--text-sm, 0.875rem);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.removeBtn:hover {
+  color: var(--color-fg);
+}

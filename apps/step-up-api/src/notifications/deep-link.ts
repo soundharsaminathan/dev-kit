@@ -1,0 +1,110 @@
+import type { NotificationType, Prisma } from "../generated/prisma/client";
+
+const DEEP_LINK_ALLOWLIST = [
+  /^\/me(\/|$)/,
+  /^\/app(\/|$)/,
+  /^\/users\//,
+  /^\/chat(\/|$)/,
+  /^\/classes(\/|$)/,
+  /^\/studios(\/|$)/,
+  /^\/trainers(\/|$)/,
+] as const;
+
+export function sanitizeDeepLink(
+  deepLink: string | null | undefined,
+): string | null {
+  if (!deepLink || typeof deepLink !== "string") {
+    return null;
+  }
+  if (!deepLink.startsWith("/") || deepLink.startsWith("//")) {
+    return null;
+  }
+  if (!DEEP_LINK_ALLOWLIST.some((pattern) => pattern.test(deepLink))) {
+    return null;
+  }
+  return deepLink;
+}
+
+export function resolveDeepLink(input: {
+  type: NotificationType | string;
+  deepLink?: string | null;
+  meta?: Prisma.InputJsonValue | null;
+}): string | null {
+  const explicit = sanitizeDeepLink(input.deepLink ?? undefined);
+  if (explicit) {
+    return explicit;
+  }
+
+  const meta =
+    input.meta && typeof input.meta === "object" && !Array.isArray(input.meta)
+      ? (input.meta as Record<string, unknown>)
+      : {};
+
+  const stringMeta = (key: string) => {
+    const value = meta[key];
+    return typeof value === "string" && value.length > 0 ? value : null;
+  };
+
+  switch (input.type) {
+    case "NEW_FOLLOW": {
+      const followerId = stringMeta("followerId");
+      return followerId ? `/users/${followerId}` : null;
+    }
+    case "MISSED_SESSION": {
+      const batchId = stringMeta("batchId");
+      return batchId ? `/me/batches/${batchId}` : "/me/attendance";
+    }
+    case "SESSION_ADDED":
+    case "SESSION_CHANGED":
+    case "SESSION_CANCELLED": {
+      const batchId = stringMeta("batchId");
+      return batchId ? `/me/batches/${batchId}` : "/me/calendar";
+    }
+    case "SUBSCRIPTION_EXPIRING":
+    case "RENEWED":
+    case "NOT_RENEWED":
+      return "/me/subscriptions";
+    case "PAYMENT_OVERDUE":
+    case "PAYMENT_RECEIVED":
+      return "/me/invoices";
+    case "CHAT_MESSAGE": {
+      const conversationId = stringMeta("conversationId");
+      return conversationId ? `/me/messages/${conversationId}` : "/me/messages";
+    }
+    case "TRAINER_PAYOUT":
+      return "/app/payouts";
+    case "DATA_IMPORT_COMPLETE": {
+      const batchId = stringMeta("batchId");
+      if (batchId) {
+        return `/app/batches/${batchId}`;
+      }
+      const importKind = stringMeta("importKind");
+      return importKind === "students" ? "/app/students/import" : "/app/import";
+    }
+    case "STUDIO_PLAN_INVOICE":
+      return "/app/settings/plan";
+    case "BOOKING_REQUESTED":
+    case "BOOKING_CONFIRMED":
+    case "BOOKING_CANCELLED":
+    case "BOOKING_RESCHEDULE_REQUESTED":
+    case "BOOKING_RESCHEDULED":
+    case "BOOKING_REMINDER":
+      return "/me/bookings";
+    default:
+      return null;
+  }
+}
+
+export function isPriorityToastType(type: string) {
+  return (
+    type === "PAYMENT_OVERDUE" ||
+    type === "PAYMENT_RECEIVED" ||
+    type === "SUBSCRIPTION_EXPIRING" ||
+    type === "NOT_RENEWED" ||
+    type === "MISSED_SESSION" ||
+    type === "SESSION_ADDED" ||
+    type === "SESSION_CHANGED" ||
+    type === "SESSION_CANCELLED" ||
+    type === "TRAINER_PAYOUT"
+  );
+}

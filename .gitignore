@@ -1,5 +1,7 @@
 node_modules/
 dist/
+apps/step-up-api/src/generated/
+**/dist-route-gen/
 coverage/
 .nx/
 .rslib/
@@ -10,13 +12,18 @@ storybook-static/
 
 # Playwright
 apps/*/playwright-report/
+apps/*/playwright-report-smoke/
+apps/*/playwright-results/
 apps/*/test-results/
 
 test-results/
 
 # IDE
 .idea/
-.cursor/
+# Ignore local Cursor state; keep shared project skills versioned.
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 *.swp
 *.swo
 
@@ -28,7 +35,26 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!**/.env.example
+
+# Secrets / credentials
+**/service-account*.json
+**/*firebase-admin*.json
+**/*credentials*.json
+**/*secret*.json
+**/*.pem
+**/*.key
+
+# Local scratch / smoke artifacts
+tmp/
+devtool/
 
 # Logs
 *.log
 vitest-output.json
+
+# Lighthouse / local perf dumps
+apps/step-up/lighthouse/
+apps/step-up/lighthouse-*.json
+apps/step-up/scripts/lighthouse-matrix.mjs
+.git-rewrite/

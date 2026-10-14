@@ -46,6 +46,7 @@ describe("ToggleButtonGroup", () => {
     const group = screen.getByRole("radiogroup");
     expect(group).toHaveAttribute("data-toggle-button-group", "");
     expect(group).toHaveAttribute("data-orientation", "vertical");
+    expect(group).toHaveAttribute("data-variant", "primary");
   });
 
   it("provides context to descendants", () => {
@@ -56,6 +57,32 @@ describe("ToggleButtonGroup", () => {
     );
 
     expect(screen.getByTestId("context")).toHaveTextContent("quiet-lg-true");
+  });
+
+  it("applies the segmented variant to the group and its buttons", () => {
+    render(
+      <ToggleButtonGroup
+        variant="segmented"
+        selectionMode="single"
+        defaultSelectedKeys={["monthly"]}
+      >
+        <ToggleButton id="monthly">Monthly</ToggleButton>
+        <ToggleButton id="quarterly">Quarterly</ToggleButton>
+      </ToggleButtonGroup>,
+    );
+
+    expect(screen.getByRole("radiogroup")).toHaveAttribute(
+      "data-variant",
+      "segmented",
+    );
+    expect(screen.getByRole("radio", { name: "Monthly" })).toHaveAttribute(
+      "data-variant",
+      "segmented",
+    );
+    expect(screen.getByRole("radio", { name: "Quarterly" })).toHaveAttribute(
+      "data-variant",
+      "segmented",
+    );
   });
 
   it("throws when useToggleButtonGroupContext is used outside the group", () => {

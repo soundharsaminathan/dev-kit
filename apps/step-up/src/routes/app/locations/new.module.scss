@@ -1,0 +1,27 @@
+@use "@dev-ui/tokens/scss" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  padding-bottom: var(--space-8, 2rem);
+}
+
+.mapWrap {
+  border-radius: var(--radius-2xl, 1.25rem);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 6%));
+  min-height: 14rem;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger, #c62828);
+  font-size: 0.875rem;
+}
+
+.help {
+  margin: 0;
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
+  font-size: 0.875rem;
+}

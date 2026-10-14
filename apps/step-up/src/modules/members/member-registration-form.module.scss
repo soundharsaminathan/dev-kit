@@ -1,0 +1,113 @@
+.steps {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  margin-bottom: var(--space-2, 0.5rem);
+}
+
+.step {
+  flex: 1;
+  height: 0.25rem;
+  border-radius: var(--radius-full, 9999px);
+  background: color-mix(in srgb, var(--color-fg) 12%, transparent);
+  transition: background-color var(--motion-fast, 150ms) ease;
+}
+
+.stepActive {
+  background: var(--color-primary);
+}
+
+.stepComplete {
+  background: color-mix(in srgb, var(--color-primary) 55%, transparent);
+}
+
+.stepLabel {
+  margin: 0 0 var(--space-2, 0.5rem);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.stylesPanel {
+  padding: 0;
+  overflow: visible;
+}
+
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.fieldLabel {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-fg) 70%, transparent);
+}
+
+.required {
+  color: var(--color-danger, #ff3b30);
+}
+
+.chipGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.chip {
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius-full, 999px);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+  background: var(--color-card, var(--color-bg));
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform var(--interaction-transition-fast, 120ms) ease,
+    border-color var(--interaction-transition-fast, 120ms) ease,
+    background-color var(--interaction-transition-fast, 120ms) ease;
+}
+
+.chip:active {
+  transform: scale(var(--interaction-press-scale, 0.97));
+}
+
+.chip[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: color-mix(
+    in srgb,
+    var(--color-primary) 14%,
+    var(--color-card, var(--color-bg))
+  );
+  color: var(--color-primary);
+}
+
+.batchField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-4, 1rem);
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 10%, transparent);
+}
+
+.batchHint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-fg) 58%, transparent);
+}
+
+.error {
+  margin: var(--space-3, 0.75rem) 0 0;
+  font-size: 0.875rem;
+  color: var(--color-danger, #e03131);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step,
+  .chip {
+    transition: none;
+    transform: none;
+  }
+}

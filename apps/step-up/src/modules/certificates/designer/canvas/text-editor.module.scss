@@ -1,0 +1,19 @@
+.editor {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: text;
+
+  :global(p) {
+    margin: 0;
+  }
+
+  :global(.cert-var) {
+    display: inline;
+    padding: 0 3px;
+    border-radius: 3px;
+    background: rgb(37 99 235 / 14%);
+    font-size: inherit;
+    white-space: nowrap;
+  }
+}

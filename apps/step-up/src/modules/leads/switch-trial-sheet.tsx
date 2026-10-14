@@ -1,0 +1,251 @@
+import { useToastContext } from "@dev-ui/components/toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useApi } from "@/lib/api-context";
+import { AppDrawer } from "@/modules/ui/app-drawer";
+import { FormInput } from "@/modules/ui/form-input";
+import { SkeletonRowList } from "@/modules/ui/skeleton-block";
+import { EmptyState, ErrorState } from "@/modules/ui/states";
+import { TouchButton } from "@/modules/ui/touch-button";
+import styles from "./leads.module.scss";
+import {
+  defaultSessionDateKey,
+  FILTER_LABELS,
+  formatTrialWhen,
+  type Lead,
+  localDateKey,
+  localDayRangeIso,
+  SWITCH_DATE_FILTERS,
+  type TrialSlot,
+} from "./types";
+
+type SwitchTrialSheetProps = {
+  lead: Lead | null;
+  studioId: string;
+  defaultDate?: string | null;
+  onOpenChange: (open: boolean) => void;
+};
+
+function presetDateKey(value: (typeof SWITCH_DATE_FILTERS)[number], now: Date) {
+  return defaultSessionDateKey(value, now);
+}
+
+export function SwitchTrialSheet({
+  lead,
+  studioId,
+  defaultDate = null,
+  onOpenChange,
+}: SwitchTrialSheetProps) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const { toast } = useToastContext("SwitchTrialSheet");
+  const isOpen = Boolean(lead);
+  const booking = lead?.trialBooking ?? null;
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    booking?.sessionId ?? null,
+  );
+  const [now, setNow] = useState(() => new Date());
+  const [dateKey, setDateKey] = useState<string | null>(defaultDate);
+  const leadKey = lead?.id ?? null;
+  const [lastLeadKey, setLastLeadKey] = useState(leadKey);
+  if (leadKey !== lastLeadKey) {
+    const openedAt = new Date();
+    setLastLeadKey(leadKey);
+    setSelectedSessionId(booking?.sessionId ?? null);
+    setNow(openedAt);
+    setDateKey(defaultDate ?? null);
+  }
+
+  const minDate = localDateKey(now);
+
+  const slotsQuery = useQuery({
+    queryKey: ["trial-slots", studioId, dateKey ?? "all"],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (dateKey) {
+        const { from, to } = localDayRangeIso(dateKey);
+        params.set("from", from);
+        params.set("to", to);
+      }
+      const query = params.toString();
+      return api.get<TrialSlot[]>(
+        `/sessions/studio/${studioId}/trial${query ? `?${query}` : ""}`,
+      );
+    },
+    enabled: isOpen,
+  });
+
+  const slots = slotsQuery.data ?? [];
+
+  const selectedPreset = useMemo(() => {
+    if (dateKey === null) return "all";
+    if (dateKey === presetDateKey("today", now)) return "today";
+    if (dateKey === presetDateKey("tomorrow", now)) return "tomorrow";
+    return null;
+  }, [dateKey, now]);
+
+  const switchMutation = useMutation({
+    mutationFn: (sessionId: string) => {
+      if (booking) {
+        return api.patch(`/bookings/${booking.id}/status`, {
+          status: booking.status,
+          sessionId,
+        });
+      }
+      return api.post("/bookings/staff/trial", {
+        studioId,
+        studentId: lead?.id,
+        sessionId,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["studio-leads", studioId],
+      });
+      toast({
+        title: booking ? "Trial session updated" : "Trial session booked",
+        variant: "success",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: booking ? "Couldn’t switch session" : "Couldn’t book trial",
+        description:
+          error instanceof Error ? error.message : "Try another session.",
+        variant: "error",
+      });
+    },
+  });
+
+  return (
+    <AppDrawer
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      title={
+        lead
+          ? booking
+            ? `Switch trial · ${lead.name}`
+            : `Pick session · ${lead.name}`
+          : "Switch trial"
+      }
+      toolbar={
+        <div className={styles.dateFilter}>
+          <div
+            className={styles.filters}
+            role="toolbar"
+            aria-label="Session date"
+          >
+            {SWITCH_DATE_FILTERS.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={styles.filterChip}
+                data-selected={selectedPreset === value ? "true" : undefined}
+                data-testid={`switch-trial-filter-${value}`}
+                onClick={() => setDateKey(presetDateKey(value, now))}
+              >
+                {FILTER_LABELS[value]}
+              </button>
+            ))}
+          </div>
+          <FormInput
+            label="Date"
+            type="date"
+            value={dateKey ?? ""}
+            min={minDate}
+            data-testid="switch-trial-date"
+            onChange={(value) => setDateKey(value || null)}
+          />
+        </div>
+      }
+      footer={
+        <div className={styles.actions}>
+          <TouchButton
+            variant="primary"
+            fullWidth
+            isPending={switchMutation.isPending}
+            isDisabled={
+              !selectedSessionId ||
+              selectedSessionId === booking?.sessionId ||
+              switchMutation.isPending
+            }
+            data-testid="switch-trial-confirm"
+            onClick={() => {
+              if (selectedSessionId) switchMutation.mutate(selectedSessionId);
+            }}
+          >
+            Save session
+          </TouchButton>
+          <TouchButton
+            variant="quiet"
+            fullWidth
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </TouchButton>
+        </div>
+      }
+    >
+      {slotsQuery.isLoading ? (
+        <SkeletonRowList count={3} label="Loading sessions" />
+      ) : null}
+
+      {slotsQuery.isError ? (
+        <ErrorState
+          description={
+            slotsQuery.error instanceof Error
+              ? slotsQuery.error.message
+              : "Could not load trial sessions."
+          }
+          action={
+            <TouchButton variant="primary" onClick={() => slotsQuery.refetch()}>
+              Try again
+            </TouchButton>
+          }
+        />
+      ) : null}
+
+      {!slotsQuery.isLoading && !slotsQuery.isError && slots.length === 0 ? (
+        <EmptyState
+          icon="calendar"
+          title={
+            dateKey === null
+              ? "No upcoming sessions"
+              : "No sessions on this date"
+          }
+          description={
+            dateKey === null
+              ? "Add batch sessions to offer trial times."
+              : "Pick another date to see more trial times."
+          }
+        />
+      ) : null}
+
+      {slots.length > 0 ? (
+        <div className={styles.slotList}>
+          {slots.map((slot) => (
+            <button
+              key={slot.sessionId}
+              type="button"
+              className={styles.slotButton}
+              data-selected={
+                selectedSessionId === slot.sessionId ? "true" : undefined
+              }
+              data-testid={`switch-trial-slot-${slot.sessionId}`}
+              onClick={() => setSelectedSessionId(slot.sessionId)}
+            >
+              <p className={styles.slotWhen}>
+                {formatTrialWhen(slot.startsAt)}
+              </p>
+              <p className={styles.slotMeta}>
+                {slot.batchName}
+                {slot.styleBadge ? ` · ${slot.styleBadge}` : ""}
+              </p>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </AppDrawer>
+  );
+}
